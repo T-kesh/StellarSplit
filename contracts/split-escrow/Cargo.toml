@@ -1,31 +1,21 @@
 [package]
 name = "split-escrow"
 version = "0.1.0"
+authors = ["Your Name <youremail@example.com>"]
 edition = "2021"
-authors = ["StellarSplit Team"]
-description = "Soroban escrow contract for bill splitting on Stellar"
+description = "Soroban contract for escrow with optional on-chain metadata"
 license = "MIT"
-repository = "https://github.com/OlufunbiIK/StellarSplit"
 
+# This tells Cargo it’s a library crate (needed for Soroban contracts)
 [lib]
 crate-type = ["cdylib"]
 
 [dependencies]
-soroban-sdk = "21.0.0"
-
-[dev-dependencies]
-soroban-sdk = { version = "21.0.0", features = ["testutils"] }
+soroban-sdk = { version = "0.23.0", features = ["testutils"] }
 
 [profile.release]
+# Optimize for WebAssembly (Soroban target)
 opt-level = "z"
-overflow-checks = true
-debug = 0
-strip = "symbols"
-debug-assertions = false
+lto = true
 panic = "abort"
 codegen-units = 1
-lto = true
-
-[profile.release-with-logs]
-inherits = "release"
-debug-assertions = true
