@@ -72,3 +72,4 @@ contracts/**/test_snapshots/
 *.wasm
 contracts/.contract-id-*
 Cargo.lock
+build_errors*.txt
