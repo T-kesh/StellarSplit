@@ -7,6 +7,7 @@
     "start": "nest start",
     "start:dev": "nest start --watch",
     "build": "tsc -p tsconfig.build.json",
+    "lint": "eslint .",
     "dev": "ts-node src/main.ts",
     "dev:watch": "nodemon --exec 'ts-node' src/main.ts",
     "test": "jest",
@@ -77,6 +78,7 @@
     "xss-clean": "^0.1.4"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@nestjs/testing": "^11.1.12",
     "@types/csurf": "^1.11.5",
     "@types/express": "^5.0.6",
@@ -89,13 +91,18 @@
     "@types/uuid": "^10.0.0",
     "@types/ws": "^8.18.1",
     "@types/xml2js": "^0.4.14",
+    "@typescript-eslint/eslint-plugin": "^8.56.1",
+    "@typescript-eslint/parser": "^8.56.1",
     "dotenv": "^17.2.3",
+    "eslint": "^10.0.2",
+    "globals": "^17.4.0",
     "jest": "^29.7.0",
     "nodemon": "^3.1.11",
     "supertest": "^7.2.2",
     "ts-jest": "^29.2.5",
     "ts-loader": "^9.5.4",
     "ts-node": "^10.9.2",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.56.1"
   }
 }
