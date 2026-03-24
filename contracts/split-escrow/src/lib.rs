@@ -1,6 +1,6 @@
 #![no_std]
 
-use soroban_sdk::{contract, contractimpl, token, Address, Env, String};
+use soroban_sdk::{contract, contractimpl, token, Address, Env, String, Vec};
 
 mod errors;
 mod events;
@@ -11,6 +11,19 @@ mod types;
 
 pub use crate::errors::Error;
 pub use crate::types::{Split, SplitStatus};
+
+const DEFAULT_MAX_PARTICIPANTS: u32 = 50;
+
+fn participant_known(participants: &Vec<Address>, addr: &Address) -> bool {
+    let mut i = 0u32;
+    while i < participants.len() {
+        if participants.get(i).unwrap() == *addr {
+            return true;
+        }
+        i += 1;
+    }
+    false
+}
 
 #[contract]
 pub struct SplitEscrowContract;
@@ -29,17 +42,24 @@ impl SplitEscrowContract {
         Ok(())
     }
 
-    pub fn create_split(
+    /// Create an escrow split. If `max_participants` is `None`, the cap defaults to 50.
+    pub fn create_escrow(
         env: Env,
         creator: Address,
         description: String,
         total_amount: i128,
+        max_participants: Option<u32>,
     ) -> Result<u64, Error> {
         if !storage::has_admin(&env) {
             return Err(Error::NotInitialized);
         }
         creator.require_auth();
         if total_amount <= 0 {
+            return Err(Error::InvalidAmount);
+        }
+
+        let cap = max_participants.unwrap_or(DEFAULT_MAX_PARTICIPANTS);
+        if cap == 0 {
             return Err(Error::InvalidAmount);
         }
 
@@ -53,6 +73,8 @@ impl SplitEscrowContract {
             total_amount,
             deposited_amount: 0,
             status: SplitStatus::Pending,
+            max_participants: cap,
+            participants: Vec::new(&env),
         };
         storage::set_split(&env, &split);
         events::emit_split_created(&env, &split);
@@ -76,6 +98,13 @@ impl SplitEscrowContract {
         }
         if split.deposited_amount + amount > split.total_amount {
             return Err(Error::InvalidAmount);
+        }
+
+        if !participant_known(&split.participants, &participant) {
+            if split.participants.len() >= split.max_participants {
+                return Err(Error::ParticipantCapExceeded);
+            }
+            split.participants.push_back(participant.clone());
         }
 
         let token_address = storage::get_token(&env);
@@ -123,7 +152,9 @@ impl SplitEscrowContract {
         fees::set_treasury(&env, &address)
     }
 
-    pub fn get_split(env: Env, split_id: u64) -> Result<Split, Error> {
+    /// Returns escrow state including `max_participants` and `participants` (count =
+    /// `participants.len()`).
+    pub fn get_escrow(env: Env, split_id: u64) -> Result<Split, Error> {
         storage::get_split(&env, split_id).ok_or(Error::SplitNotFound)
     }
 }

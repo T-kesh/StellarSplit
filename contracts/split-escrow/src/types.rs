@@ -1,4 +1,4 @@
-use soroban_sdk::{contracttype, Address, String};
+use soroban_sdk::{contracttype, Address, String, Vec};
 
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -8,6 +8,7 @@ pub enum SplitStatus {
     Released,
 }
 
+/// Escrow split state. `participants.len()` is the current distinct participant count.
 #[contracttype]
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Split {
@@ -17,4 +18,8 @@ pub struct Split {
     pub total_amount: i128,
     pub deposited_amount: i128,
     pub status: SplitStatus,
+    /// Maximum distinct participants allowed (default 50 at creation if not specified).
+    pub max_participants: u32,
+    /// Distinct addresses that have deposited; length is the current participant count.
+    pub participants: Vec<Address>,
 }
