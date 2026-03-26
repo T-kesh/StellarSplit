@@ -138,12 +138,10 @@ impl DisputeContract {
         resolver.require_auth();
 
         let get_creator_sym = Symbol::new(&env, "get_creator");
-        let get_creator_args: soroban_sdk::Vec<Val> = vec![&env, dispute.escrow_split_id.into_val(&env)];
-        let escrow_creator: Address = env.invoke_contract(
-            &dispute.escrow_contract,
-            &get_creator_sym,
-            get_creator_args,
-        );
+        let get_creator_args: soroban_sdk::Vec<Val> =
+            vec![&env, dispute.escrow_split_id.into_val(&env)];
+        let escrow_creator: Address =
+            env.invoke_contract(&dispute.escrow_contract, &get_creator_sym, get_creator_args);
 
         if resolver != escrow_creator {
             return Err(Error::UnauthorizedResolver);
@@ -156,20 +154,12 @@ impl DisputeContract {
             let reverse_sym = Symbol::new(&env, "reverse_split");
             let reverse_args: soroban_sdk::Vec<Val> =
                 vec![&env, dispute.escrow_split_id.into_val(&env)];
-            env.invoke_contract::<()>(
-                &dispute.escrow_contract,
-                &reverse_sym,
-                reverse_args,
-            );
+            env.invoke_contract::<()>(&dispute.escrow_contract, &reverse_sym, reverse_args);
         } else {
             let release_sym = Symbol::new(&env, "release_funds");
             let release_args: soroban_sdk::Vec<Val> =
                 vec![&env, dispute.escrow_split_id.into_val(&env)];
-            env.invoke_contract::<()>(
-                &dispute.escrow_contract,
-                &release_sym,
-                release_args,
-            );
+            env.invoke_contract::<()>(&dispute.escrow_contract, &release_sym, release_args);
         }
 
         dispute.status = DisputeStatus::Resolved;

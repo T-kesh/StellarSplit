@@ -8,11 +8,11 @@ CONTRACTS_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 # Supported contracts: all crates that compile cleanly under the pinned Soroban toolchain.
 #
 # Excluded (broken):
-# - dispute-resolution: many compilation errors (mid-port to pinned Soroban toolchain)
 # - split-escrow: many compilation errors (draft/broken source)
 # - multi-sig-splits: E0507 move error (needs ownership fix)
 SUPPORTED_CONTRACTS=(
   "achievement-badges"
+  "dispute-resolution"
   "flash-loan"
   "path-payment"
   "split-template"

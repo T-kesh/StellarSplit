@@ -7,7 +7,9 @@ use soroban_sdk::{
     testutils::{Address as _, Ledger},
     Address, Env, String,
 };
-use split_escrow::{SplitEscrowContract, SplitEscrowContractClient, SplitStatus as EscrowSplitStatus};
+use split_escrow::{
+    SplitEscrowContract, SplitEscrowContractClient, SplitStatus as EscrowSplitStatus,
+};
 
 fn setup() -> (
     Env,
@@ -78,7 +80,18 @@ fn setup() -> (
 
 #[test]
 fn test_raise_dispute_records_voting_state() {
-    let (env, client, _escrow, escrow_contract, _token_client, _creator, _participant, _treasury, escrow_split_id, _admin) = setup();
+    let (
+        env,
+        client,
+        _escrow,
+        escrow_contract,
+        _token_client,
+        _creator,
+        _participant,
+        _treasury,
+        escrow_split_id,
+        _admin,
+    ) = setup();
     env.ledger().with_mut(|l| l.timestamp = 1000);
 
     let raiser = Address::generate(&env);
@@ -98,8 +111,18 @@ fn test_raise_dispute_records_voting_state() {
 
 #[test]
 fn test_upheld_dispute_cancels_and_refunds_escrow() {
-    let (env, client, escrow_client, escrow_contract, token_client, creator, participant, treasury, escrow_split_id, _admin) =
-        setup();
+    let (
+        env,
+        client,
+        escrow_client,
+        escrow_contract,
+        token_client,
+        creator,
+        participant,
+        treasury,
+        escrow_split_id,
+        _admin,
+    ) = setup();
     env.ledger().with_mut(|l| l.timestamp = 1000);
 
     let raiser = Address::generate(&env);
@@ -133,8 +156,18 @@ fn test_upheld_dispute_cancels_and_refunds_escrow() {
 
 #[test]
 fn test_dismissed_dispute_releases_escrow() {
-    let (env, client, escrow_client, escrow_contract, token_client, creator, participant, treasury, escrow_split_id, _admin) =
-        setup();
+    let (
+        env,
+        client,
+        escrow_client,
+        escrow_contract,
+        token_client,
+        creator,
+        participant,
+        treasury,
+        escrow_split_id,
+        _admin,
+    ) = setup();
     env.ledger().with_mut(|l| l.timestamp = 1000);
 
     let raiser = Address::generate(&env);
@@ -167,8 +200,18 @@ fn test_dismissed_dispute_releases_escrow() {
 
 #[test]
 fn test_tied_dispute_releases_escrow() {
-    let (env, client, escrow_client, escrow_contract, token_client, creator, participant, treasury, escrow_split_id, _admin) =
-        setup();
+    let (
+        env,
+        client,
+        escrow_client,
+        escrow_contract,
+        token_client,
+        creator,
+        participant,
+        treasury,
+        escrow_split_id,
+        _admin,
+    ) = setup();
     env.ledger().with_mut(|l| l.timestamp = 1000);
 
     let raiser = Address::generate(&env);
@@ -201,8 +244,18 @@ fn test_tied_dispute_releases_escrow() {
 
 #[test]
 fn test_resolve_before_voting_window_returns_error() {
-    let (env, client, _escrow_client, escrow_contract, _token_client, creator, _participant, _treasury, escrow_split_id, _admin) =
-        setup();
+    let (
+        env,
+        client,
+        _escrow_client,
+        escrow_contract,
+        _token_client,
+        creator,
+        _participant,
+        _treasury,
+        escrow_split_id,
+        _admin,
+    ) = setup();
     env.ledger().with_mut(|l| l.timestamp = 1000);
 
     let raiser = Address::generate(&env);
@@ -220,8 +273,18 @@ fn test_resolve_before_voting_window_returns_error() {
 
 #[test]
 fn test_vote_after_period_returns_error() {
-    let (env, client, _escrow_client, escrow_contract, _token_client, _creator, _participant, _treasury, escrow_split_id, _admin) =
-        setup();
+    let (
+        env,
+        client,
+        _escrow_client,
+        escrow_contract,
+        _token_client,
+        _creator,
+        _participant,
+        _treasury,
+        escrow_split_id,
+        _admin,
+    ) = setup();
     env.ledger().with_mut(|l| l.timestamp = 1000);
 
     let raiser = Address::generate(&env);
@@ -242,8 +305,18 @@ fn test_vote_after_period_returns_error() {
 
 #[test]
 fn test_only_escrow_creator_can_resolve() {
-    let (env, client, _escrow_client, escrow_contract, _token_client, _creator, _participant, _treasury, escrow_split_id, _admin) =
-        setup();
+    let (
+        env,
+        client,
+        _escrow_client,
+        escrow_contract,
+        _token_client,
+        _creator,
+        _participant,
+        _treasury,
+        escrow_split_id,
+        _admin,
+    ) = setup();
     env.ledger().with_mut(|l| l.timestamp = 1000);
 
     let raiser = Address::generate(&env);
