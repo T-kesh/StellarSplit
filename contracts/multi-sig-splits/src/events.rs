@@ -62,15 +62,30 @@ pub fn emit_signer_removed(env: &Env, split_id: &String, signer: &Address) {
 }
 
 /// Emit threshold updated event
-pub fn emit_threshold_updated(env: &Env, split_id: &String, old_threshold: u32, new_threshold: u32) {
+pub fn emit_threshold_updated(
+    env: &Env,
+    split_id: &String,
+    old_threshold: u32,
+    new_threshold: u32,
+) {
     env.events().publish(
-        ("threshold_updated", "split_id", "old_threshold", "new_threshold"),
+        (
+            "threshold_updated",
+            "split_id",
+            "old_threshold",
+            "new_threshold",
+        ),
         (split_id.clone(), old_threshold, new_threshold),
     );
 }
 
 /// Emit governance changed event (for any governance-related changes)
-pub fn emit_governance_changed(env: &Env, split_id: &String, change_type: &String, actor: &Address) {
+pub fn emit_governance_changed(
+    env: &Env,
+    split_id: &String,
+    change_type: &String,
+    actor: &Address,
+) {
     env.events().publish(
         ("governance_changed", "split_id", "change_type", "actor"),
         (split_id.clone(), change_type.clone(), actor.clone()),
