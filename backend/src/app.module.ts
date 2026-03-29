@@ -15,6 +15,7 @@ import { getRedisConnectionOptions } from "./config/redis.config";
 import { AnalyticsModule } from "./analytics/analytics.module";
 import { CommonModule } from "./common/common.module";
 import { ComplianceModule } from "./compliance/compliance.module";
+import { CollaborationModule } from "./collaboration/collaboration.module";
 import { DashboardModule } from "./dashboard/dashboard.module";
 import { DebtSimplificationModule } from "./debt-simplification/debt-simplification.module";
 import { DisputesModule } from "./disputes/disputes.module";
@@ -128,6 +129,8 @@ dotenv.config({
         SchedulerModule,
         UploadModule,
         ProfileModule,
+        CollaborationModule,
+        DashboardModule,
         // Duplicated modules were already included earlier.
     ],
 })
