@@ -39,17 +39,20 @@ export class ComplianceController {
     }
 
     @Put('splits/:splitId/category')
+    @RequirePermissions(Permissions.CAN_UPDATE_SPLIT)
     async assignCategory(@Param('splitId') splitId: string, @Body('categoryId') categoryId: string) {
         return this.complianceService.assignCategoryToSplit(splitId, categoryId);
     }
 
     @Get('summary')
-    async getSummary(@Query('userId') userId: string, @Query('year') year: string) {
-        return this.complianceService.getSummary(userId, parseInt(year));
+    @RequirePermissions(Permissions.CAN_READ_EXPORT)
+    async getSummary(@Query('year') year: string, @Req() req: AuthRequest) {
+        return this.complianceService.getSummary(req.user.walletAddress, parseInt(year));
     }
 
     @Get('tax-deductible-total')
-    async getTaxDeductibleTotal(@Query('userId') userId: string, @Query('period') period: string) {
-        return this.complianceService.getTaxDeductibleTotal(userId, period);
+    @RequirePermissions(Permissions.CAN_READ_EXPORT)
+    async getTaxDeductibleTotal(@Query('period') period: string, @Req() req: AuthRequest) {
+        return this.complianceService.getTaxDeductibleTotal(req.user.walletAddress, period);
     }
 }

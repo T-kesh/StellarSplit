@@ -13,7 +13,7 @@ import { PDFExporterService } from "./exporters/pdf-exporter.service";
 import { QBOExporterService } from "./exporters/qbo-exporter.service";
 import { JSONExporterService } from "./exporters/json-exporter.service";
 import { OFXExporterService } from "./exporters/ofx-exporter.service";
-import { EmailService } from "../email/email.service";
+import { ProfileService } from "../profile/profile.service";
 import { Logger } from "@nestjs/common";
 import * as fs from "fs";
 import * as path from "path";
@@ -34,6 +34,7 @@ export class ComplianceProcessor {
     private jsonExporter: JSONExporterService,
     private ofxExporter: OFXExporterService,
     private emailService: EmailService,
+    private profileService: ProfileService,
   ) {
     if (!fs.existsSync(this.exportDir)) {
       fs.mkdirSync(this.exportDir);

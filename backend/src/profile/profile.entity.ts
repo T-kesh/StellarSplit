@@ -18,8 +18,8 @@ export class UserProfile {
   @PrimaryColumn({ type: 'varchar', length: 56, name: 'wallet_address' })
   walletAddress!: string;
 
-  @Column({ type: 'varchar', length: 255, nullable: true, name: 'display_name' })
-  displayName!: string | null;
+  @Column({ type: 'varchar', length: 255, nullable: true, name: 'email' })
+  email!: string | null;
 
   @Column({ type: 'varchar', length: 2048, nullable: true, name: 'avatar_url' })
   avatarUrl!: string | null;
