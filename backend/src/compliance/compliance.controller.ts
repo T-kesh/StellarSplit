@@ -50,9 +50,9 @@ export class ComplianceController {
         return this.complianceService.getSummary(req.user.walletAddress, parseInt(year));
     }
 
-    @Get('tax-deductible-total')
+    @Get('export/:requestId/download')
     @RequirePermissions(Permissions.CAN_READ_EXPORT)
-    async getTaxDeductibleTotal(@Query('period') period: string, @Req() req: AuthRequest) {
-        return this.complianceService.getTaxDeductibleTotal(req.user.walletAddress, period);
+    async downloadExport(@Param('requestId') requestId: string, @Req() req: AuthRequest) {
+        return this.complianceService.downloadExport(requestId, req.user.walletAddress);
     }
 }
