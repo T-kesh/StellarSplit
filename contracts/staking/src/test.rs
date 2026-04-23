@@ -1,5 +1,7 @@
 #![cfg(test)]
-extern crate std;
+mod event_assertions;
+
+use crate::event_assertions::*;
 
 use crate::{StakingContract, StakingContractClient};
 use soroban_sdk::token::{Client as TokenClient, StellarAssetClient as TokenAdminClient};
@@ -27,18 +29,22 @@ fn test_staking_success() {
     let staking_id = env.register_contract(None, StakingContract);
     let staking_client = StakingContractClient::new(&env, &staking_id);
     staking_client.initialize(&admin, &token_address);
+    assert_event_emitted(&env, (soroban_sdk::symbol_short!("staking"), soroban_sdk::symbol_short!("init")), (&admin, &token_address));
 
     // Mint tokens
     token_admin_client.mint(&staker, &1000);
 
     // Stake
     staking_client.stake(&staker, &500);
+    assert_staking_event(&env, "stake", &staker, 500);
     assert_eq!(token_client.balance(&staker), 500);
     assert_eq!(token_client.balance(&staking_id), 500);
     assert_eq!(staking_client.get_voting_power(&staker), 500);
 
     // Unstake
     staking_client.unstake(&staker, &200);
+    let unlock_time = env.ledger().timestamp() + 604800;
+    assert_unstake_event(&env, &staker, 200, unlock_time);
     assert_eq!(staking_client.get_voting_power(&staker), 300);
 
     // Try withdraw (should fail - cooldown)
@@ -48,6 +54,7 @@ fn test_staking_success() {
     // Jump 7 days
     env.ledger().set_timestamp(604801);
     staking_client.withdraw(&staker);
+    assert_staking_event(&env, "withdraw", &staker, 200);
     assert_eq!(token_client.balance(&staker), 700);
 }
 
@@ -80,10 +87,13 @@ fn test_staking_rewards() {
     // Admin deposits rewards
     token_admin_client.mint(&admin, &1000);
     staking_client.deposit_rewards(&admin, &100); // 60 for staker1, 40 for staker2
+    assert_reward_deposit_event(&env, &admin, 100);
 
     // Claim rewards
     let claimed1 = staking_client.claim_staking_rewards(&staker1);
+    assert_staking_event(&env, "claim", &staker1, 60);
     let claimed2 = staking_client.claim_staking_rewards(&staker2);
+    assert_staking_event(&env, "claim", &staker2, 40);
 
     assert_eq!(claimed1, 60);
     assert_eq!(claimed2, 40);
@@ -120,6 +130,7 @@ fn test_delegation() {
 
     // Delegate staker1 -> staker2
     staking_client.delegate_voting_power(&staker1, &Some(staker2.clone()));
+    assert_delegation_event(&env, &staker1, &Some(staker2.clone()));
 
     assert_eq!(staking_client.get_voting_power(&staker1), 600); // Still has own voting power?
                                                                 // Wait, usually delegation means giving power to someone else.
@@ -130,10 +141,12 @@ fn test_delegation() {
 
     // Unstake staker1 partial
     staking_client.unstake(&staker1, &100);
+    assert_unstake_event(&env, &staker1, 100, env.ledger().timestamp() + 604800);
     assert_eq!(staking_client.get_voting_power(&staker2), 900);
 
     // Remove delegation
     staking_client.delegate_voting_power(&staker1, &None);
+    assert_delegation_event(&env, &staker1, &None);
     assert_eq!(staking_client.get_voting_power(&staker2), 400);
 }
 

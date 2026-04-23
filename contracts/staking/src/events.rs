@@ -34,3 +34,17 @@ pub fn emit_delegated(env: &Env, delegator: &Address, delegatee: &Option<Address
         (delegator.clone(), delegatee.clone()),
     );
 }
+
+pub fn emit_withdrawn(env: &Env, staker: &Address, amount: i128) {
+    env.events().publish(
+        (symbol_short!("staking"), symbol_short!("withdraw")),
+        (staker, amount),
+    );
+}
+
+pub fn emit_reward_deposited(env: &Env, admin: &Address, amount: i128) {
+    env.events().publish(
+        (symbol_short!("staking"), symbol_short!("deposit")),
+        (admin, amount),
+    );
+}
