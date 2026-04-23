@@ -1,4 +1,6 @@
 import { Test, TestingModule } from "@nestjs/testing";
+import { AuthorizationGuard } from "../auth/guards/authorization.guard";
+import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { RecurringSplitsController } from "./recurring-splits.controller";
 import {
   RecurringSplitsService,
@@ -62,7 +64,10 @@ describe("RecurringSplitsController", () => {
           },
         },
       ],
-    }).compile();
+    })
+      .overrideGuard(JwtAuthGuard).useValue({ canActivate: () => true })
+      .overrideGuard(AuthorizationGuard).useValue({ canActivate: () => true })
+      .compile();
 
     controller = module.get<RecurringSplitsController>(
       RecurringSplitsController,

@@ -2,6 +2,8 @@ import { Test, TestingModule } from "@nestjs/testing";
 import { BatchController } from "./batch.controller";
 import { BatchService } from "./batch.service";
 import { AuthorizationService } from "../auth/services/authorization.service";
+import { AuthorizationGuard } from "../auth/guards/authorization.guard";
+import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import {
   CreateBatchSplitsDto,
   CreateBatchPaymentsDto,
@@ -48,7 +50,10 @@ describe("BatchController", () => {
           },
         },
       ],
-    }).compile();
+    })
+      .overrideGuard(JwtAuthGuard).useValue({ canActivate: () => true })
+      .overrideGuard(AuthorizationGuard).useValue({ canActivate: () => true })
+      .compile();
 
     controller = module.get<BatchController>(BatchController);
     service = module.get<BatchService>(BatchService);

@@ -1,4 +1,6 @@
 import { Test, TestingModule } from "@nestjs/testing";
+import { AuthorizationGuard } from "../auth/guards/authorization.guard";
+import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { CollaborationController } from "./collaboration.controller";
 import { CollaborationService } from "./collaboration.service";
 import {
@@ -61,7 +63,10 @@ describe("CollaborationController", () => {
                     useValue: mockService,
                 },
             ],
-        }).compile();
+        })
+            .overrideGuard(JwtAuthGuard).useValue({ canActivate: () => true })
+            .overrideGuard(AuthorizationGuard).useValue({ canActivate: () => true })
+            .compile();
 
         controller = module.get<CollaborationController>(
             CollaborationController,
