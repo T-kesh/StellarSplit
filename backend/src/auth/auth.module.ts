@@ -8,6 +8,7 @@ import { Participant } from '../entities/participant.entity';
 import { Receipt } from '../receipts/entities/receipt.entity';
 import { Dispute } from '../entities/dispute.entity';
 import { Group } from '../group/entities/group.entity';
+import { ReceiptPolicyService } from '../receipts/receipt-policy.service';
 
 @Module({
   imports: [
@@ -23,11 +24,13 @@ import { Group } from '../group/entities/group.entity';
     AuthorizationService,
     AuthorizationGuard,
     JwtAuthGuard,
+    ReceiptPolicyService,
   ],
   exports: [
     AuthorizationService,
     AuthorizationGuard,
     JwtAuthGuard,
+    ReceiptPolicyService,
   ],
 })
 export class AuthModule {}

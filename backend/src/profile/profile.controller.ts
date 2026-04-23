@@ -4,12 +4,20 @@ import {
   Patch,
   Body,
   Param,
+  Req,
+  UseGuards,
   ValidationPipe,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam } from '@nestjs/swagger';
 import { ProfileService } from './profile.service';
 import { UserProfile } from './profile.entity';
 import { UpdateProfileDto } from './dto/update-profile.dto';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { ProfilePolicyGuard } from './profile-policy.guard';
+
+interface AuthRequest {
+  user: { walletAddress: string; id: string };
+}
 
 @ApiTags('Profile')
 @Controller('profile')
@@ -32,6 +40,7 @@ export class ProfileController {
   }
 
   @Patch(':walletAddress')
+  @UseGuards(JwtAuthGuard, ProfilePolicyGuard)
   @ApiOperation({ summary: 'Update user profile (creates if not exists)' })
   @ApiParam({
     name: 'walletAddress',
@@ -42,6 +51,7 @@ export class ProfileController {
   async update(
     @Param('walletAddress') walletAddress: string,
     @Body(ValidationPipe) dto: UpdateProfileDto,
+    @Req() req: AuthRequest,
   ): Promise<UserProfile> {
     return this.profileService.update(walletAddress, dto);
   }

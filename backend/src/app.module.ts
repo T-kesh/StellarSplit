@@ -48,6 +48,7 @@ import { ShortLinksModule } from "./short-links/short-links.module";
 import { WebhooksModule } from "./webhooks/webhooks.module";
 import { ReputationModule } from "./reputation/reputation.module";
 import { FraudDetectionModule } from "./fraud-detection/fraud-detection.module";
+import { SecurityModule } from "./security/security.module";
 // Duplicate imports removed; already imported above.
 // Load environment variables
 dotenv.config({
@@ -94,6 +95,7 @@ dotenv.config({
     }),
 
     // ✅ Feature modules
+    SecurityModule,
     HealthModule,
     StellarModule,
     PaymentsModule,

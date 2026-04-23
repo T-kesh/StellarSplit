@@ -750,16 +750,17 @@ Returns service health and uptime. No authentication required.
 
 ## Receipts
 
-Base path: **`/api/api/receipts`** (controller path is `api/receipts` with global prefix `api`).
+Base path: **`/api/receipts`**.
 
 | Method | URL | Description |
 |--------|-----|-------------|
-| `POST` | `/api/api/receipts/upload/:splitId` | Upload receipt (multipart) |
-| `GET` | `/api/api/receipts/split/:splitId` | List receipts for split |
-| `GET` | `/api/api/receipts/:receiptId/signed-url` | Get signed URL |
-| `DELETE` | `/api/api/receipts/:receiptId` | Soft-delete receipt |
-| `GET` | `/api/api/receipts/:receiptId/ocr-data` | OCR data |
-| `POST` | `/api/api/receipts/:receiptId/reprocess-ocr` | Reprocess OCR |
+| `POST` | `/api/receipts/split/:splitId/upload` | Upload receipt to a split (multipart) |
+| `POST` | `/api/receipts/upload` | Upload a standalone receipt (multipart) |
+| `GET` | `/api/receipts/split/:splitId` | List receipts for split |
+| `GET` | `/api/receipts/:receiptId/signed-url` | Get signed URL |
+| `DELETE` | `/api/receipts/:receiptId` | Soft-delete receipt |
+| `GET` | `/api/receipts/:receiptId/ocr-data` | OCR data |
+| `POST` | `/api/receipts/:receiptId/reprocess-ocr` | Reprocess OCR |
 
 Upload uses `multipart/form-data` with field `file`. Expects `req.user.walletAddress`.
 

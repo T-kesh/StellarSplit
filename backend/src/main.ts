@@ -87,17 +87,7 @@ async function bootstrap() {
     maxAge: 86400, // 24 hours preflight cache
   };
   
-  // Additional security headers for production
-  if (nodeEnv === Environment.PRODUCTION) {
-    app.use((req: unknown, res: { setHeader(name: string, value: string): void }, next: () => void) => {
-      res.setHeader('X-Content-Type-Options', 'nosniff');
-      res.setHeader('X-Frame-Options', 'DENY');
-      res.setHeader('X-XSS-Protection', '1; mode=block');
-      res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
-      next();
-    });
-  }
-  
+  // Security middleware and production hardening are centralized in SecurityModule.
   app.enableCors(corsOptions);
 
   // Configure Swagger

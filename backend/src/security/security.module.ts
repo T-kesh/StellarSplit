@@ -1,12 +1,9 @@
-import { Module, MiddlewareConsumer } from "@nestjs/common";
+import { Module, MiddlewareConsumer, NestModule } from "@nestjs/common";
 import { ThrottlerModule } from "@nestjs/throttler";
 import { RateLimitGuard } from "./rate-limit.guard";
 import { IpThrottleGuard } from "./throttle.guard";
 import { AuditLogService } from "./audit-log.service";
-import helmet from "helmet";
-import csrf from "csurf";
-import xssClean from "xss-clean";
-import rateLimit from "express-rate-limit";
+import { SecurityMiddleware } from "./security.middleware";
 
 @Module({
   imports: [
@@ -18,21 +15,11 @@ import rateLimit from "express-rate-limit";
       },
     ]),
   ],
-  providers: [RateLimitGuard, IpThrottleGuard, AuditLogService],
+  providers: [RateLimitGuard, IpThrottleGuard, AuditLogService, SecurityMiddleware],
   exports: [RateLimitGuard, IpThrottleGuard, AuditLogService],
 })
-export class SecurityModule {
+export class SecurityModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    consumer
-      .apply(
-        helmet(),
-        xssClean(),
-        csrf({ cookie: true }),
-        rateLimit({
-          windowMs: 60 * 1000,
-          max: 100,
-        })
-      )
-      .forRoutes("*");
+    consumer.apply(SecurityMiddleware).forRoutes("*");
   }
 }

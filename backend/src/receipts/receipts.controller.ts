@@ -28,10 +28,10 @@ interface AuthRequest extends Request {
 export class ReceiptsController {
   constructor(private readonly service: ReceiptsService) {}
 
-  @Post("upload/:splitId")
+  @Post("split/:splitId/upload")
   @UseInterceptors(FileInterceptor("file"))
   @RequirePermissions(Permissions.CAN_CREATE_RECEIPT)
-  async upload(
+  async uploadForSplit(
     @Param("splitId") splitId: string,
     @UploadedFile() file: Express.Multer.File,
     @Req() req: AuthRequest,
@@ -39,13 +39,24 @@ export class ReceiptsController {
     return this.service.uploadWithOcr(splitId, file, req.user.walletAddress);
   }
 
-  @Post("upload-standalone")
+  @Post("upload")
   @UseInterceptors(FileInterceptor("file"))
+  @RequirePermissions(Permissions.CAN_CREATE_RECEIPT)
   async uploadStandalone(
     @UploadedFile() file: Express.Multer.File,
     @Req() req: AuthRequest,
   ) {
     return this.service.uploadStandalone(file, req.user.walletAddress);
+  }
+
+  @Post("upload-standalone")
+  @UseInterceptors(FileInterceptor("file"))
+  @RequirePermissions(Permissions.CAN_CREATE_RECEIPT)
+  async uploadStandaloneAlias(
+    @UploadedFile() file: Express.Multer.File,
+    @Req() req: AuthRequest,
+  ) {
+    return this.uploadStandalone(file, req);
   }
 
   @Get("split/:splitId")
