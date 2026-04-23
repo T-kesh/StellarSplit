@@ -39,6 +39,7 @@ bash scripts/ci-contracts.sh build  # WASM build only
 | dispute-resolution | Broken | - | Many compilation errors; mid-port to pinned Soroban toolchain |
 | split-escrow | Broken | - | Many compilation errors; draft/broken source |
 | multi-sig-splits | Broken | - | E0507 move error; needs ownership fix |
+| reminder | Archived | - | Orphaned contract area; incomplete structure, relocated to archived/ |
 
 ## Project Structure
 
@@ -53,6 +54,8 @@ contracts/
 ├── dispute-resolution/        # (excluded - broken)
 ├── split-escrow/              # (excluded - broken)
 ├── multi-sig-splits/          # (excluded - broken)
+├── archived/
+│   └── reminder/              # (archived - orphaned, incomplete)
 ├── scripts/
 │   └── ci-contracts.sh        # CI: fmt, test, build for supported contracts
 └── README.md                  # This file
