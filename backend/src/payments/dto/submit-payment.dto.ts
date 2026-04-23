@@ -1,5 +1,10 @@
 import { IsString, IsUUID, IsNotEmpty, IsOptional } from 'class-validator';
 
+/**
+ * Payment submission body.
+ * Idempotency is handled exclusively via the `Idempotency-Key` HTTP header
+ * (see PaymentRequestContext) — do not add an idempotencyKey field here.
+ */
 export class SubmitPaymentDto {
   @IsUUID()
   @IsNotEmpty()
@@ -14,15 +19,9 @@ export class SubmitPaymentDto {
   stellarTxHash!: string;
 
   /**
-   * Optional idempotency key to prevent duplicate submissions
-   * If not provided, one will be generated from splitId, participantId, and txHash
-   */
-  @IsOptional()
-  @IsString()
-  idempotencyKey?: string;
-
-  /**
-   * External reference for webhook replay support
+   * External reference for webhook replay correlation.
+   * Carried through from body so callers can correlate server responses
+   * with their own webhook events without depending on the idempotency key.
    */
   @IsOptional()
   @IsString()

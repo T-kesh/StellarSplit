@@ -21,6 +21,20 @@ import {
 import { createHmac, timingSafeEqual } from "crypto";
 import { Server, Socket } from "socket.io";
 import { AuthorizationService } from "../auth/services/authorization.service";
+import {
+  JoinSplitPayload,
+  LeaveSplitPayload,
+  SplitActivityPayload,
+  SplitPresencePayload,
+  JoinedSplitEvent,
+  LeftSplitEvent,
+  ParticipantJoinedEvent,
+  PaymentReceivedEvent,
+  SplitActivityBroadcastEvent,
+  SplitPresenceEvent,
+  SplitUpdatedEvent,
+  WsHandlerResponse,
+} from "./ws-events.types";
 
 export interface WsJwtPayload {
   sub?: string;
@@ -179,8 +193,8 @@ export class EventsGateway
   @SubscribeMessage("join_split")
   async handleJoinSplit(
     @ConnectedSocket() client: Socket,
-    @MessageBody() payload: { splitId: string },
-  ): Promise<{ event: string; data: { splitId: string; room: string } }> {
+    @MessageBody() payload: JoinSplitPayload,
+  ): Promise<WsHandlerResponse<JoinedSplitEvent>> {
     if (!payload?.splitId) {
       throw new BadRequestException("splitId is required");
     }
@@ -210,15 +224,15 @@ export class EventsGateway
     };
   }
 
-  emitPaymentReceived(splitId: string, data: Record<string, unknown>): void {
+  emitPaymentReceived(splitId: string, data: PaymentReceivedEvent): void {
     this.server.to(this.getSplitRoom(splitId)).emit("payment_received", data);
   }
 
-  emitSplitUpdated(splitId: string, data: Record<string, unknown>): void {
+  emitSplitUpdated(splitId: string, data: SplitUpdatedEvent): void {
     this.server.to(this.getSplitRoom(splitId)).emit("split_updated", data);
   }
 
-  emitParticipantJoined(splitId: string, data: Record<string, unknown>): void {
+  emitParticipantJoined(splitId: string, data: ParticipantJoinedEvent): void {
     this.server.to(this.getSplitRoom(splitId)).emit("participant_joined", data);
   }
 
@@ -226,8 +240,8 @@ export class EventsGateway
   @SubscribeMessage("leave_split")
   async handleLeaveSplit(
     @ConnectedSocket() client: Socket,
-    @MessageBody() payload: { splitId: string },
-  ): Promise<{ event: string; data: { splitId: string; room: string } }> {
+    @MessageBody() payload: LeaveSplitPayload,
+  ): Promise<WsHandlerResponse<LeftSplitEvent>> {
     if (!payload?.splitId) {
       throw new BadRequestException("splitId is required");
     }
@@ -237,21 +251,15 @@ export class EventsGateway
 
     return {
       event: "left_split",
-      data: {
-        splitId: payload.splitId,
-        room,
-      },
+      data: { splitId: payload.splitId, room },
     };
   }
 
   @UseGuards(WsJwtAuthGuard)
   @SubscribeMessage("split_presence")
   async handleSplitPresence(
-    @MessageBody() payload: { splitId: string },
-  ): Promise<{
-    event: string;
-    data: { splitId: string; participants: string[] };
-  }> {
+    @MessageBody() payload: SplitPresencePayload,
+  ): Promise<WsHandlerResponse<SplitPresenceEvent>> {
     if (!payload?.splitId) {
       throw new BadRequestException("splitId is required");
     }
@@ -262,23 +270,16 @@ export class EventsGateway
 
     return {
       event: "split_presence",
-      data: {
-        splitId: payload.splitId,
-        participants,
-      },
+      data: { splitId: payload.splitId, participants },
     };
   }
 
   @UseGuards(WsJwtAuthGuard)
   @SubscribeMessage("split_activity")
   async handleSplitActivity(
-    @ConnectedSocket() client: Socket,
-    @MessageBody()
-    payload: { splitId: string; activity: Record<string, unknown> },
-  ): Promise<{
-    event: string;
-    data: { splitId: string; activity: Record<string, unknown> };
-  }> {
+    @ConnectedSocket() _client: Socket,
+    @MessageBody() payload: SplitActivityPayload,
+  ): Promise<WsHandlerResponse<SplitActivityBroadcastEvent>> {
     if (!payload?.splitId || !payload?.activity) {
       throw new BadRequestException("splitId and activity are required");
     }
@@ -291,10 +292,7 @@ export class EventsGateway
 
     return {
       event: "split_activity_broadcast",
-      data: {
-        splitId: payload.splitId,
-        activity: payload.activity,
-      },
+      data: { splitId: payload.splitId, activity: payload.activity },
     };
   }
 

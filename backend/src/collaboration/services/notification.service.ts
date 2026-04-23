@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { CollaborationNotificationDispatcher } from './collaboration-notification-dispatcher';
 
 export interface CollaborationInvitationNotification {
   collaborationId: string;
@@ -26,26 +27,19 @@ export interface CollaborationRemovalNotification {
 export class CollaborationNotificationService {
   private readonly logger = new Logger(CollaborationNotificationService.name);
 
+  constructor(private readonly dispatcher: CollaborationNotificationDispatcher) {}
+
   async sendCollaborationInvitation(
     artistWallet: string,
     notification: CollaborationInvitationNotification,
   ): Promise<void> {
     this.logger.log(
-      `Sending collaboration invitation to ${artistWallet} for track "${notification.trackTitle}" as ${notification.role}`,
+      `Dispatching collaboration invitation to ${artistWallet} for track "${notification.trackTitle}"`,
     );
-
-    // TODO: Integrate with actual notification system
-    // This could be:
-    // - Push notifications via PushNotificationsService
-    // - Email notifications via EmailService  
-    // - In-app notifications via a notifications module
-    // - WebSocket real-time notifications
-    
-    // For now, we'll just log the notification
-    this.logger.debug('Collaboration invitation notification:', {
-      recipient: artistWallet,
-      ...notification,
-    });
+    const result = await this.dispatcher.dispatchInvitation(artistWallet, notification);
+    if (result.failures.length > 0) {
+      this.logger.warn(`Invitation delivery had failures: ${result.failures.join('; ')}`);
+    }
   }
 
   async sendCollaborationResponse(
@@ -53,28 +47,22 @@ export class CollaborationNotificationService {
     notification: CollaborationResponseNotification,
   ): Promise<void> {
     this.logger.log(
-      `Sending collaboration response to ${inviterWallet} from ${notification.artistName} (${notification.artistWallet}) - Status: ${notification.status}`,
+      `Dispatching collaboration response to ${inviterWallet} — status: ${notification.status}`,
     );
-
-    // TODO: Integrate with actual notification system
-    this.logger.debug('Collaboration response notification:', {
-      recipient: inviterWallet,
-      ...notification,
-    });
+    const result = await this.dispatcher.dispatchResponse(inviterWallet, notification);
+    if (result.failures.length > 0) {
+      this.logger.warn(`Response delivery had failures: ${result.failures.join('; ')}`);
+    }
   }
 
   async sendCollaborationRemoval(
     recipientWallet: string,
     notification: CollaborationRemovalNotification,
   ): Promise<void> {
-    this.logger.log(
-      `Sending collaboration removal notification to ${recipientWallet} from ${notification.removerWallet}`,
-    );
-
-    // TODO: Integrate with actual notification system
-    this.logger.debug('Collaboration removal notification:', {
-      recipient: recipientWallet,
-      ...notification,
-    });
+    this.logger.log(`Dispatching collaboration removal to ${recipientWallet}`);
+    const result = await this.dispatcher.dispatchRemoval(recipientWallet, notification);
+    if (result.failures.length > 0) {
+      this.logger.warn(`Removal delivery had failures: ${result.failures.join('; ')}`);
+    }
   }
 }
