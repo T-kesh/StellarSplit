@@ -201,7 +201,7 @@ impl StakingContract {
         admin.require_auth();
         let stored_admin = storage::get_admin(&env).ok_or(Error::NotInitialized)?;
         if admin != stored_admin {
-            return Err(Error::NotInitialized); // Or a specific Unauthorized error
+            return Err(Error::Unauthorized);
         }
 
         if amount <= 0 {

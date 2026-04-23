@@ -100,6 +100,56 @@ fn test_staking_rewards() {
 }
 
 #[test]
+fn test_deposit_rewards_unauthorized() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+    let wrong_admin = Address::generate(&env);
+
+    // Deploy token
+    let token_admin = Address::generate(&env);
+    let token_id = env.register_stellar_asset_contract_v2(token_admin.clone());
+    let token_address = token_id.address();
+    let token_admin_client = TokenAdminClient::new(&env, &token_address);
+
+    // Deploy Staking Contract
+    let staking_id = env.register_contract(None, StakingContract);
+    let staking_client = StakingContractClient::new(&env, &staking_id);
+    staking_client.initialize(&admin, &token_address);
+
+    // Stake some
+    let staker = Address::generate(&env);
+    token_admin_client.mint(&staker, &1000);
+    staking_client.stake(&staker, &500);
+
+    // Try deposit with wrong admin
+    token_admin_client.mint(&wrong_admin, &1000);
+    let res = staking_client.try_deposit_rewards(&wrong_admin, &100);
+    assert!(res.is_err());
+    assert_eq!(res.err().unwrap(), Error::Unauthorized);
+}
+
+#[test]
+fn test_double_initialize_fails() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let admin = Address::generate(&env);
+    let token_address = Address::generate(&env);
+
+    // Deploy Staking Contract
+    let staking_id = env.register_contract(None, StakingContract);
+    let staking_client = StakingContractClient::new(&env, &staking_id);
+    staking_client.initialize(&admin, &token_address);
+
+    // Try initialize again
+    let res = staking_client.try_initialize(&admin, &token_address);
+    assert!(res.is_err());
+    assert_eq!(res.err().unwrap(), Error::AlreadyInitialized);
+}
+
+#[test]
 fn test_delegation() {
     let env = Env::default();
     env.mock_all_auths();
