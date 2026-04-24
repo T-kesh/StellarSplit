@@ -9,6 +9,9 @@ This document catalogs the reusable React components and custom hooks in this re
 
 ## Components by Feature
 
+- [Receipt Processing Flow](RECEIPT_FLOW.md)
+- [Data Provenance & Mocks](data-provenance.md)
+
 <!-- COMPONENTS_SPLITS -->
 
 ### `SplitHeader`

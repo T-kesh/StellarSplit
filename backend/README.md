@@ -44,6 +44,11 @@ NestJS backend for StellarSplit - a crypto-powered bill splitting application.
 
 The API will be available at `http://localhost:3000`
 
+## 🔐 Authentication
+
+The backend supports both JWT-based authentication and a development bypass.
+For detailed information on headers and local testing, see the [Authentication Guide](../docs/AUTHENTICATION.md).
+
 ## 📚 API Documentation
 
 Once the application is running, visit:
