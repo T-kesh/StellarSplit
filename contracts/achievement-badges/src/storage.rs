@@ -2,6 +2,7 @@
 //!
 //! This module handles all data storage operations for the badge system.
 
+use crate::metadata;
 use crate::types::*;
 use soroban_sdk::{contracttype, symbol_short, Address, Env, String, Symbol, Vec};
 
@@ -75,41 +76,7 @@ pub fn get_user_badges(env: &Env, user: &Address) -> Vec<UserBadge> {
         .unwrap_or(Vec::new(env))
 }
 
-/// Get badge metadata for a badge type
+/// Get badge metadata for a badge type using standardized definitions
 pub fn get_badge_metadata(env: &Env, badge_type: &BadgeType) -> BadgeMetadata {
-    match badge_type {
-        BadgeType::FirstSplitCreator => BadgeMetadata {
-            name: String::from_str(env, "First Split Creator"),
-            description: String::from_str(env, "Awarded for creating your first split"),
-            image_url: String::from_str(env, "https://stellarsplit.com/badges/first-creator.png"),
-            badge_type: badge_type.clone(),
-        },
-        BadgeType::HundredSplitsParticipated => BadgeMetadata {
-            name: String::from_str(env, "Century Club"),
-            description: String::from_str(env, "Participated in 100 splits"),
-            image_url: String::from_str(env, "https://stellarsplit.com/badges/century-club.png"),
-            badge_type: badge_type.clone(),
-        },
-        BadgeType::BigSpender => BadgeMetadata {
-            name: String::from_str(env, "Big Spender"),
-            description: String::from_str(env, "Spent over 1000 XLM in splits"),
-            image_url: String::from_str(env, "https://stellarsplit.com/badges/big-spender.png"),
-            badge_type: badge_type.clone(),
-        },
-        BadgeType::FrequentSettler => BadgeMetadata {
-            name: String::from_str(env, "Frequent Settler"),
-            description: String::from_str(env, "Settled 50 splits as creator"),
-            image_url: String::from_str(
-                env,
-                "https://stellarsplit.com/badges/frequent-settler.png",
-            ),
-            badge_type: badge_type.clone(),
-        },
-        BadgeType::GroupLeader => BadgeMetadata {
-            name: String::from_str(env, "Group Leader"),
-            description: String::from_str(env, "Created 10 group splits"),
-            image_url: String::from_str(env, "https://stellarsplit.com/badges/group-leader.png"),
-            badge_type: badge_type.clone(),
-        },
-    }
+    metadata::get_metadata_for_badge(env, badge_type)
 }
