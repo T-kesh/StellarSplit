@@ -7,6 +7,7 @@
 
 use soroban_sdk::{contract, contractimpl, panic_with_error, Address, Env, Vec};
 
+mod eligibility;
 mod events;
 mod storage;
 mod types;
@@ -14,6 +15,7 @@ mod types;
 #[cfg(test)]
 mod test;
 
+pub use eligibility::*;
 pub use events::*;
 pub use storage::*;
 pub use types::*;
@@ -41,43 +43,36 @@ impl AchievementBadgesContract {
         events::emit_initialized(&env, &admin);
     }
 
-    /// Check if a user is eligible for a specific badge
+    /// Check if a user is eligible for a specific badge based on achievement evidence
     ///
-    /// This function checks the eligibility criteria for each badge type.
-    /// In a real implementation, this would integrate with the main split contract
-    /// to verify user achievements.
-    pub fn check_badge_eligibility(env: Env, user: Address, badge_type: BadgeType) -> bool {
-        // For now, we'll implement mock eligibility checks
-        // In production, this would query the main split contract
-        match badge_type {
-            BadgeType::FirstSplitCreator => {
-                // Mock: Assume user is eligible if they haven't minted this badge
-                !storage::has_minted_badge(&env, &user, &badge_type)
-            }
-            BadgeType::HundredSplitsParticipated => {
-                // Mock: Assume user is eligible if they haven't minted this badge
-                !storage::has_minted_badge(&env, &user, &badge_type)
-            }
-            BadgeType::BigSpender => {
-                // Mock: Assume user is eligible if they haven't minted this badge
-                !storage::has_minted_badge(&env, &user, &badge_type)
-            }
-            BadgeType::FrequentSettler => {
-                // Mock: Assume user is eligible if they haven't minted this badge
-                !storage::has_minted_badge(&env, &user, &badge_type)
-            }
-            BadgeType::GroupLeader => {
-                // Mock: Assume user is eligible if they haven't minted this badge
-                !storage::has_minted_badge(&env, &user, &badge_type)
-            }
-        }
+    /// This function evaluates real achievement evidence against badge criteria.
+    /// It takes explicit contract inputs to back the eligibility decision.
+    pub fn check_badge_eligibility_with_evidence(
+        env: Env,
+        user: Address,
+        badge_type: BadgeType,
+        evidence: AchievementEvidence,
+    ) -> EligibilityResult {
+        // Verify the user is authorizing this call
+        user.require_auth();
+
+        // Use the eligibility provider with standard BigSpender threshold
+        // (can be parameterized per deployment)
+        let big_spender_threshold = 1_000_000_000; // Configurable threshold
+        eligibility::evaluate_eligibility(&badge_type, &evidence, big_spender_threshold)
     }
 
-    /// Mint a badge NFT for a user
+    /// Mint a badge NFT for a user backed by real achievement evidence
     ///
-    /// This function mints a new badge NFT if the user is eligible and hasn't
-    /// already minted that badge type.
-    pub fn mint_badge(env: Env, user: Address, badge_type: BadgeType) -> Result<u64, BadgeError> {
+    /// This function mints a new badge NFT if:
+    /// 1. The user hasn't already minted this badge type
+    /// 2. The provided evidence meets the badge eligibility criteria
+    pub fn mint_badge_with_evidence(
+        env: Env,
+        user: Address,
+        badge_type: BadgeType,
+        evidence: AchievementEvidence,
+    ) -> Result<u64, BadgeError> {
         // Verify the user is authorizing this call
         user.require_auth();
 
@@ -86,29 +81,34 @@ impl AchievementBadgesContract {
             return Err(BadgeError::AlreadyMinted);
         }
 
-        // Check eligibility
-        if !Self::check_badge_eligibility(env.clone(), user.clone(), badge_type.clone()) {
-            return Err(BadgeError::NotEligible);
+        // Evaluate eligibility based on evidence
+        let big_spender_threshold = 1_000_000_000; // Configurable threshold
+        let eligibility_result =
+            eligibility::evaluate_eligibility(&badge_type, &evidence, big_spender_threshold);
+
+        match eligibility_result {
+            EligibilityResult::Eligible => {
+                // Generate token ID
+                let token_id = storage::get_next_token_id(&env);
+
+                // Create user badge record
+                let badge = UserBadge {
+                    badge_type: badge_type.clone(),
+                    token_id: token_id,
+                    minted_at: env.ledger().timestamp(),
+                };
+
+                // Store the badge
+                storage::add_user_badge(&env, &user, &badge);
+                storage::set_minted_badge(&env, &user, &badge_type);
+
+                // Emit minting event
+                events::emit_badge_minted(&env, &user, &badge_type, &token_id);
+
+                Ok(token_id)
+            }
+            EligibilityResult::NotEligible(_) => Err(BadgeError::NotEligible),
         }
-
-        // Generate token ID
-        let token_id = storage::get_next_token_id(&env);
-
-        // Create user badge record
-        let badge = UserBadge {
-            badge_type: badge_type.clone(),
-            token_id: token_id,
-            minted_at: env.ledger().timestamp(),
-        };
-
-        // Store the badge
-        storage::add_user_badge(&env, &user, &badge);
-        storage::set_minted_badge(&env, &user, &badge_type);
-
-        // Emit minting event
-        events::emit_badge_minted(&env, &user, &badge_type, &token_id);
-
-        Ok(token_id)
     }
 
     /// Get all badges owned by a user
