@@ -13,6 +13,7 @@ import {
   getStoredActiveUserId,
   getStoredAuthToken,
 } from './session'
+import { ApiRoutes } from '../services/apiRouteRegistry'
 
 type RequestMethod = 'get' | 'post' | 'patch' | 'delete'
 
@@ -22,7 +23,7 @@ interface RequestOptions<TData = unknown> {
   data?: TData
   params?: Record<string, unknown>
   headers?: Record<string, string>
-  includeControllerApiPrefix?: boolean
+  signal?: AbortSignal
 }
 
 export interface ApiSplitParticipant {
@@ -243,53 +244,6 @@ function createApiClient(baseURL: string) {
   return apiInstance
 }
 
-function getBasePathname(): string {
-  try {
-    const url = new URL(
-      BASE_API_URL,
-      typeof window !== 'undefined' ? window.location.origin : 'http://localhost',
-    )
-    return url.pathname.replace(/\/+$/, '')
-  } catch {
-    return ''
-  }
-}
-
-const BASE_PATHNAME = getBasePathname()
-
-function isVersionedApiPathname(pathname: string): boolean {
-  return /\/v\d+$/.test(pathname.replace(/\/+$/, ''))
-}
-
-function uniqueValues(values: string[]): string[] {
-  return Array.from(new Set(values))
-}
-
-/**
- * Builds the ordered list of path variants the HTTP client will try.
- * @param basePathname Pathname of `BASE_API_URL` (e.g. `/api` or `/api/v1`); when omitted, uses the running app’s configured API base.
- */
-export function buildPathVariants(
-  endpoint: string,
-  includeControllerApiPrefix = false,
-  basePathname: string = BASE_PATHNAME,
-): string[] {
-  const normalizedPath = basePathname.replace(/\/+$/, '')
-  const versionPrefixes = isVersionedApiPathname(normalizedPath) ? [''] : ['/v1', '']
-  const normalizedEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`
-  const controllerPrefixes = includeControllerApiPrefix ? ['/api', ''] : ['']
-
-  return uniqueValues(
-    versionPrefixes.flatMap((versionPrefix) =>
-      controllerPrefixes.map((controllerPrefix) =>
-        `${versionPrefix}${controllerPrefix}${normalizedEndpoint}`.replace(
-          /\/{2,}/g,
-          '/',
-        ),
-      ),
-    ),
-  )
-}
 
 function extractMessages(input: unknown): string[] {
   if (!input) {
@@ -392,46 +346,28 @@ export function normalizeApiError(error: unknown): ApiError {
   })
 }
 
-async function requestWithFallback<TResponse, TData = unknown>({
+async function request<TResponse, TData = unknown>({
   method,
   endpoint,
   data,
   params,
   headers,
-  includeControllerApiPrefix,
+  signal,
 }: RequestOptions<TData>): Promise<TResponse> {
-  const pathVariants = buildPathVariants(endpoint, includeControllerApiPrefix)
-  let lastError: ApiError | null = null
+  try {
+    const response = await apiClient.request<TResponse>({
+      method,
+      url: endpoint,
+      data,
+      params,
+      headers,
+      signal,
+    } as AxiosRequestConfig<TData>)
 
-  for (const url of pathVariants) {
-    try {
-      const response = await apiClient.request<TResponse>({
-        method,
-        url,
-        data,
-        params,
-        headers,
-      } as AxiosRequestConfig<TData>)
-
-      return response.data
-    } catch (requestError) {
-      const normalizedError = normalizeApiError(requestError)
-      lastError = normalizedError
-
-      if (normalizedError.statusCode === 404 && url !== pathVariants[pathVariants.length - 1]) {
-        continue
-      }
-
-      throw normalizedError
-    }
+    return response.data
+  } catch (requestError) {
+    throw normalizeApiError(requestError)
   }
-
-  throw lastError ??
-    new ApiError({
-      message: DEFAULT_API_REQUEST_ERROR,
-      fieldErrors: {},
-      isNetworkError: false,
-    })
 }
 
 function normalizeSignedUrlResponse(response: unknown): string | null {
@@ -472,105 +408,120 @@ export function getApiFieldErrors(error: unknown): Record<string, string> {
 
 export const apiClient = createApiClient(BASE_API_URL)
 
-export async function fetchSplitById(splitId: string): Promise<ApiSplitRecord> {
-  return requestWithFallback<ApiSplitRecord>({
+export async function fetchSplitById(splitId: string, signal?: AbortSignal): Promise<ApiSplitRecord> {
+  return request<ApiSplitRecord>({
     method: 'get',
-    endpoint: `/splits/${splitId}`,
+    endpoint: ApiRoutes.splits.byId(splitId),
+    signal,
   })
 }
 
 export async function updateSplit(
   splitId: string,
   payload: Partial<Pick<ApiSplitRecord, 'totalAmount' | 'description' | 'preferredCurrency' | 'status'>>,
+  signal?: AbortSignal,
 ): Promise<ApiSplitRecord> {
-  return requestWithFallback<ApiSplitRecord, typeof payload>({
+  return request<ApiSplitRecord, typeof payload>({
     method: 'patch',
-    endpoint: `/splits/${splitId}`,
+    endpoint: ApiRoutes.splits.byId(splitId),
     data: payload,
+    signal,
   })
 }
 
 export async function createSplit(
   payload: ApiCreateSplitPayload,
+  signal?: AbortSignal,
 ): Promise<ApiSplitRecord> {
-  return requestWithFallback<ApiSplitRecord, ApiCreateSplitPayload>({
+  return request<ApiSplitRecord, ApiCreateSplitPayload>({
     method: 'post',
-    endpoint: '/splits',
+    endpoint: ApiRoutes.splits.create(),
     data: payload,
+    signal,
   })
 }
 
 export async function fetchSplitPayments(
   splitId: string,
+  signal?: AbortSignal,
 ): Promise<ApiPaymentRecord[]> {
-  return requestWithFallback<ApiPaymentRecord[]>({
+  return request<ApiPaymentRecord[]>({
     method: 'get',
-    endpoint: `/payments/split/${splitId}`,
+    endpoint: ApiRoutes.payments.bySplit(splitId),
+    signal,
   })
 }
 
 export async function fetchSplitPaymentStats(
   splitId: string,
+  signal?: AbortSignal,
 ): Promise<ApiPaymentStats> {
-  return requestWithFallback<ApiPaymentStats>({
+  return request<ApiPaymentStats>({
     method: 'get',
-    endpoint: `/payments/stats/${splitId}`,
+    endpoint: ApiRoutes.payments.stats(splitId),
+    signal,
   })
 }
 
-export async function submitSplitPayment(payload: {
-  splitId: string
-  participantId: string
-  stellarTxHash: string
-  idempotencyKey?: string
-  externalReference?: string
-}): Promise<{
+export async function submitSplitPayment(
+  payload: {
+    splitId: string
+    participantId: string
+    stellarTxHash: string
+    idempotencyKey?: string
+    externalReference?: string
+  },
+  signal?: AbortSignal,
+): Promise<{
   success: boolean
   message: string
   paymentId?: string
   isDuplicate?: boolean
   idempotencyKey?: string
 }> {
-  return requestWithFallback({
+  return request({
     method: 'post',
-    endpoint: '/payments/submit',
+    endpoint: ApiRoutes.payments.submit(),
     data: payload,
+    signal,
   })
 }
 
 export async function fetchSplitReceipts(
   splitId: string,
+  signal?: AbortSignal,
 ): Promise<ApiReceiptRecord[]> {
-  return requestWithFallback<ApiReceiptRecord[]>({
+  return request<ApiReceiptRecord[]>({
     method: 'get',
-    endpoint: `/receipts/split/${splitId}`,
-    includeControllerApiPrefix: true,
+    endpoint: ApiRoutes.receipts.bySplit(splitId),
+    signal,
   })
 }
 
 export async function uploadReceiptForSplit(
   splitId: string,
   file: File,
+  signal?: AbortSignal,
 ): Promise<ApiReceiptRecord> {
   const formData = new FormData()
   formData.append('file', file)
 
-  return requestWithFallback<ApiReceiptRecord, FormData>({
+  return request<ApiReceiptRecord, FormData>({
     method: 'post',
-    endpoint: `/receipts/upload/${splitId}`,
+    endpoint: ApiRoutes.receipts.upload(splitId),
     data: formData,
     headers: {
       Accept: 'application/json',
     },
-    includeControllerApiPrefix: true,
+    signal,
   })
 }
 
-export async function fetchReceiptSignedUrl(receiptId: string): Promise<string | null> {
-  const response = await requestWithFallback<unknown>({
+export async function fetchReceiptSignedUrl(receiptId: string, signal?: AbortSignal): Promise<string | null> {
+  const response = await request<unknown>({
     method: 'get',
-    endpoint: `/receipts/${receiptId}/signed-url`,
-    includeControllerApiPrefix: true,
+    endpoint: ApiRoutes.receipts.signedUrl(receiptId),
+    signal,
   })
 
   return normalizeSignedUrlResponse(response)
@@ -578,41 +529,48 @@ export async function fetchReceiptSignedUrl(receiptId: string): Promise<string |
 
 export async function fetchReceiptOcrData(
   receiptId: string,
+  signal?: AbortSignal,
 ): Promise<ApiReceiptOcrResponse> {
-  return requestWithFallback<ApiReceiptOcrResponse>({
+  return request<ApiReceiptOcrResponse>({
     method: 'get',
-    endpoint: `/receipts/${receiptId}/ocr-data`,
-    includeControllerApiPrefix: true,
+    endpoint: ApiRoutes.receipts.ocrData(receiptId),
+    signal,
   })
 }
 
-export async function createItem(payload: {
-  splitId: string
-  name: string
-  quantity: number
-  unitPrice: number
-  totalPrice: number
-  assignedToIds: string[]
-}): Promise<ApiSplitItem> {
-  return requestWithFallback<ApiSplitItem, typeof payload>({
+export async function createItem(
+  payload: {
+    splitId: string
+    name: string
+    quantity: number
+    unitPrice: number
+    totalPrice: number
+    assignedToIds: string[]
+  },
+  signal?: AbortSignal,
+): Promise<ApiSplitItem> {
+  return request<ApiSplitItem, typeof payload>({
     method: 'post',
-    endpoint: '/items',
+    endpoint: ApiRoutes.items.create(),
     data: payload,
+    signal,
   })
 }
 
-export async function deleteItem(itemId: string): Promise<void> {
-  await requestWithFallback<void>({
+export async function deleteItem(itemId: string, signal?: AbortSignal): Promise<void> {
+  await request<void>({
     method: 'delete',
-    endpoint: `/items/${itemId}`,
+    endpoint: ApiRoutes.items.byId(itemId),
+    signal,
   })
 }
 
-export async function fetchProfile(walletAddress: string): Promise<ApiProfile | null> {
+export async function fetchProfile(walletAddress: string, signal?: AbortSignal): Promise<ApiProfile | null> {
   try {
-    return await requestWithFallback<ApiProfile>({
+    return await request<ApiProfile>({
       method: 'get',
-      endpoint: `/profile/${walletAddress}`,
+      endpoint: ApiRoutes.profile.byWallet(walletAddress),
+      signal,
     })
   } catch (error) {
     const apiError = normalizeApiError(error)
@@ -623,24 +581,27 @@ export async function fetchProfile(walletAddress: string): Promise<ApiProfile | 
   }
 }
 
-export async function fetchDashboardSummary(): Promise<ApiDashboardSummary> {
-  return requestWithFallback<ApiDashboardSummary>({
+export async function fetchDashboardSummary(signal?: AbortSignal): Promise<ApiDashboardSummary> {
+  return request<ApiDashboardSummary>({
     method: 'get',
-    endpoint: '/dashboard/summary',
+    endpoint: ApiRoutes.dashboard.summary(),
+    signal,
   })
 }
 
 export async function fetchDashboardActivity(
   page = 1,
   limit = 10,
+  signal?: AbortSignal,
 ): Promise<ApiDashboardActivityResponse> {
-  return requestWithFallback<ApiDashboardActivityResponse>({
+  return request<ApiDashboardActivityResponse>({
     method: 'get',
-    endpoint: '/dashboard/activity',
+    endpoint: ApiRoutes.dashboard.activity(),
     params: {
       page,
       limit,
     },
+    signal,
   })
 }
 
@@ -652,6 +613,7 @@ export async function fetchUserActivities(
     page?: number
     isRead?: boolean
   },
+  signal?: AbortSignal,
 ): Promise<{
   data: ApiActivityRecord[]
   total: number
@@ -661,19 +623,22 @@ export async function fetchUserActivities(
   hasMore: boolean
   unreadCount: number
 }> {
-  return requestWithFallback({
+  return request({
     method: 'get',
-    endpoint: `/activities/${userId}`,
+    endpoint: ApiRoutes.activities.byUser(userId),
     params,
+    signal,
   })
 }
 
 export async function createActivityRecord(
   payload: ApiCreateActivityPayload,
+  signal?: AbortSignal,
 ): Promise<ApiActivityRecord> {
-  return requestWithFallback<ApiActivityRecord, ApiCreateActivityPayload>({
+  return request<ApiActivityRecord, ApiCreateActivityPayload>({
     method: 'post',
-    endpoint: '/activities',
+    endpoint: ApiRoutes.activities.create(),
     data: payload,
+    signal,
   })
 }

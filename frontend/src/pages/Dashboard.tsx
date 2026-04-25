@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { DollarSign, Receipt, BellRing, WalletCards, RefreshCw } from "lucide-react";
 import { Link } from "react-router-dom";
 import type { TFunction } from "i18next";
@@ -15,6 +15,7 @@ import {
   type ApiProfile,
 } from "../utils/api-client";
 import { formatCurrency, formatRelativeTime } from "../utils/format";
+import { useAbortableRequest } from "../hooks/useAbortableRequest";
 
 function describeActivity(
   activity: ApiActivityRecord,
@@ -106,47 +107,37 @@ function DashboardLoadingState() {
 export default function DashboardPage() {
   const { t } = useTranslation();
   const { activeUserId } = useWallet();
-  const [summary, setSummary] = useState<ApiDashboardSummary | null>(null);
   const [profile, setProfile] = useState<ApiProfile | null>(null);
-  const [activities, setActivities] = useState<ApiActivityRecord[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  const currency = profile?.preferredCurrency ?? "USD";
+  const { data: dashboardData, loading: isLoading, error, refetch: refetchDashboard } = useAbortableRequest(
+    async (signal: AbortSignal) => {
+      if (!activeUserId) {
+        return { summary: null, activities: [] };
+      }
 
-  const loadDashboard = useCallback(async () => {
-    if (!activeUserId) {
-      setSummary(null);
-      setProfile(null);
-      setActivities([]);
-      setError(null);
-      setIsLoading(false);
-      return;
-    }
-
-    setIsLoading(true);
-    setError(null);
-
-    try {
       const [summaryResult, activityResult, profileResult] = await Promise.all([
-        fetchDashboardSummary(),
-        fetchDashboardActivity(1, 6),
-        fetchProfile(activeUserId),
+        fetchDashboardSummary(signal),
+        fetchDashboardActivity(1, 6, signal),
+        fetchProfile(activeUserId, signal),
       ]);
 
-      setSummary(summaryResult);
-      setActivities(activityResult.data);
       setProfile(profileResult);
-    } catch (dashboardError) {
-      setError(getApiErrorMessage(dashboardError));
-    } finally {
-      setIsLoading(false);
-    }
-  }, [activeUserId]);
 
-  useEffect(() => {
-    void loadDashboard();
-  }, [loadDashboard]);
+      return {
+        summary: summaryResult,
+        activities: activityResult.data,
+      };
+    },
+    [activeUserId],
+  );
+
+  const summary = dashboardData?.summary ?? null;
+  const activities = dashboardData?.activities ?? [];
+  const currency = profile?.preferredCurrency ?? "USD";
+
+  const loadDashboard = useCallback(() => {
+    refetchDashboard();
+  }, [refetchDashboard]);
 
   const stats = useMemo(() => {
     if (!summary) {
@@ -234,7 +225,7 @@ export default function DashboardPage() {
           </div>
         ) : isLoading ? (
           <DashboardLoadingState />
-        ) : error ? (
+        ) : error && !dashboardData ? (
           <div className="rounded-2xl border border-red-200 bg-red-50 p-6 shadow-sm">
             <h2 className="text-lg font-bold text-red-800">{t("dashboard.loadErrorTitle")}</h2>
             <p className="mt-2 text-sm text-red-700">{error}</p>
