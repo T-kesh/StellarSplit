@@ -1,4 +1,4 @@
-# Contributing to StellarSplit 
+mkdir -p docs# Contributing to StellarSplit 
 
 Thank you for your interest in contributing to StellarSplit! We're building a tool that makes splitting bills effortless for everyone. Your contributions help solve a universal problem.
 
