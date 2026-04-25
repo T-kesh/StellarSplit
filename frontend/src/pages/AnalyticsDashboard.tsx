@@ -53,7 +53,7 @@ function ChartCard({ id, filename, children, wide = false }: ChartCardProps) {
 
 // ── Main dashboard ───────────────────────────────────────────────────────────
 export default function AnalyticsDashboard() {
-  const { data, loading, error, dateRange, setDateRange, refetch } = useAnalytics();
+  const { data, source, loading, error, dateRange, setDateRange, refetch } = useAnalytics();
 
   // ── Loading state ──────────────────────────────────────────────────────────
   if (loading) {
@@ -131,6 +131,11 @@ export default function AnalyticsDashboard() {
               <p className="text-sm text-muted-theme mt-0.5">
                 Your spending insights and patterns
               </p>
+              {source ? (
+                <p className="text-xs text-muted-theme mt-1">
+                  Source: {source === "live" ? "Live API" : "Fixture fallback"}
+                </p>
+              ) : null}
             </div>
           </div>
 

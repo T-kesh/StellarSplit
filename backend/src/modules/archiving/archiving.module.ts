@@ -10,7 +10,8 @@ import { Participant } from "../../entities/participant.entity";
 import { Payment } from "../../entities/payment.entity";
 import { PushNotificationsModule } from "../../push-notifications/push-notifications.module";
 import { EmailModule } from "../../email/email.module";
-import { User } from "@/entities/user.entity";
+import { User } from "../../entities/user.entity";
+import { ReputationModule } from "../../reputation/reputation.module";
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { User } from "@/entities/user.entity";
     ScheduleModule.forRoot(),
     PushNotificationsModule,
     EmailModule,
+    ReputationModule,
   ],
   controllers: [ArchivingController],
   providers: [ArchivingService],

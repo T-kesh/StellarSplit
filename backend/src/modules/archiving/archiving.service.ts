@@ -11,6 +11,8 @@ import { User } from '../../entities/user.entity'; // Fixed path to user entity
 import { PushNotificationsService } from '../../push-notifications/push-notifications.service';
 import { EmailService } from '../../email/email.service'; // Fixed path
 import { NotificationEventType } from '../../push-notifications/entities/notification-preference.entity';
+import { ReputationService } from '../../reputation/reputation.service';
+import { ReputationEventType } from '../../reputation/enums/reputation-event-type.enum';
 
 @Injectable()
 export class ArchivingService {
@@ -32,6 +34,7 @@ export class ArchivingService {
     private pushService: PushNotificationsService,
     private emailService: EmailService,
     private dataSource: DataSource,
+    private readonly reputationService: ReputationService,
   ) {}
 
   async archiveSplit(splitId: string, reason: ArchiveReason, archivedBy: string): Promise<SplitArchive> {
@@ -57,6 +60,26 @@ export class ArchivingService {
 
         const participants = await participantRepo.find({ where: { splitId } });
         const payments = await paymentRepo.find({ where: { splitId } });
+
+        // Reputation: if the split is expiring/unpaid, penalize still-unpaid participants.
+        if (reason === ArchiveReason.EXPIRED) {
+          const unpaidParticipants = participants.filter(
+            (p) =>
+              Number(p.amountPaid) < Number(p.amountOwed) &&
+              p.status !== "paid",
+          );
+
+          await Promise.all(
+            unpaidParticipants.map((p) =>
+              this.reputationService.recordEvent(
+                p.userId,
+                split.id,
+                ReputationEventType.UNPAID_EXPIRED,
+                manager,
+              ),
+            ),
+          );
+        }
     
         // Create archive record
         const archive = archiveRepo.create({

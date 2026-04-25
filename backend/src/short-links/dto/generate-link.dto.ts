@@ -16,4 +16,9 @@ export class GenerateLinkDto {
   @IsNumber()
   @Min(1)
   expiryHours?: number;
+
+  @IsOptional()
+  @IsNumber()
+  @Min(1)
+  maxAccesses?: number;
 }

@@ -1,5 +1,6 @@
+import { useTranslation } from "react-i18next";
 import { formatDate, formatCurrency } from "../../utils/format";
-import type { HistorySplit } from "../../pages/SplitHistoryPage";
+import type { HistorySplit } from "../../services/splitHistoryRepository";
 import { SplitCard } from "./SplitCard";
 
 interface SplitTimelineProps {
@@ -42,6 +43,10 @@ export function SplitTimeline({ splits }: SplitTimelineProps) {
 }
 
 function TimelineRow({ split }: { split: HistorySplit }) {
+  const { t } = useTranslation();
+  const participants = split.participants.map((p) =>
+    p.name === "You" ? t("common.you") : p.name,
+  );
   return (
     <div className="relative flex items-start gap-4">
       <div className="relative">
@@ -56,7 +61,7 @@ function TimelineRow({ split }: { split: HistorySplit }) {
           amountLabel={formatCurrency(split.totalAmount, split.currency)}
           status={split.status}
           role={split.role}
-          participants={split.participants.map((p) => p.name)}
+          participants={participants}
         />
       </div>
     </div>

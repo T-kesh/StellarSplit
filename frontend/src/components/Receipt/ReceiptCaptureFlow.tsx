@@ -17,14 +17,20 @@ import {
 import { ReceiptParserResults } from './ReceiptParserResults';
 import type { ParsedItem } from './ParsedItemEditor';
 import {
-  createManualReviewItems,
-} from '../../utils/receiptOcr';
-import {
-  fetchReceiptOcrData,
-  fetchReceiptSignedUrl,
-  getApiErrorMessage,
-  uploadReceiptForSplit,
-} from '../../utils/api-client';
+  createReceiptOcrProvider,
+  receiptOcrStrategyFromEnv,
+  type ReceiptOcrProvider,
+} from '../../services/receiptOcrProvider';
+import * as api from '../../utils/api-client';
+
+const defaultReceiptOcrProvider = createReceiptOcrProvider({
+  strategy: receiptOcrStrategyFromEnv,
+  deps: {
+    uploadReceiptForSplit: api.uploadReceiptForSplit,
+    fetchReceiptOcrData: api.fetchReceiptOcrData,
+    fetchReceiptSignedUrl: api.fetchReceiptSignedUrl,
+  },
+});
 
 type FlowStep =
   | 'choose'
@@ -65,6 +71,8 @@ interface ReceiptCaptureFlowProps {
   splitId: string;
   currency: string;
   onApply: (result: ReceiptCaptureFlowResult) => void;
+  /** Injected OCR boundary (defaults to env-driven transport or simulate strategy). */
+  ocrProvider?: ReceiptOcrProvider;
 }
 
 const createEmptyDraft = (): ReceiptFlowDraft => ({
@@ -124,6 +132,7 @@ export const ReceiptCaptureFlow = ({
   splitId,
   currency,
   onApply,
+  ocrProvider = defaultReceiptOcrProvider,
 }: ReceiptCaptureFlowProps) => {
   const storageKey = useMemo(
     () => `stellarsplit-receipt-draft:${splitId}`,
@@ -185,54 +194,34 @@ export const ReceiptCaptureFlow = ({
         method,
         imageUrl: localPreviewUrl ?? current.imageUrl,
         imageName: file.name,
-        progress: 15,
-        progressLabel: 'Uploading your receipt',
+        progress: 5,
+        progressLabel: 'Preparing receipt',
         error: undefined,
       }));
 
-      const receipt = await uploadReceiptForSplit(splitId, file);
-
-      setDraft((current) => ({
-        ...current,
-        receiptId: receipt.id,
-        step: 'processing',
-        method,
-        imageUrl: localPreviewUrl ?? current.imageUrl,
-        imageName: file.name,
-        progress: 55,
-        progressLabel: 'Extracting items from the uploaded receipt',
-        error: undefined,
-        updatedAt: new Date().toISOString(),
-      }));
-
-      const [ocrResult, signedUrl] = await Promise.all([
-        fetchReceiptOcrData(receipt.id),
-        fetchReceiptSignedUrl(receipt.id),
-      ]);
-
-      if (!ocrResult.processed || !ocrResult.data) {
-        throw new Error('Receipt OCR is still processing. Please try again in a moment.')
-      }
-
-      const ocrData = ocrResult.data;
-      const parsedItems = (ocrData.items ?? []).map((item, index) => ({
-        id: `receipt-item-${index + 1}`,
-        name: item.name,
-        quantity: item.quantity,
-        price: item.price,
-        confidence: Math.round((ocrData.confidence ?? 0) * 100),
-      }));
+      const processed = await ocrProvider.processUploadedReceiptFile({
+        splitId,
+        file,
+        localPreviewUrl,
+        onProgress: (progress) => {
+          updateDraft((current) => ({
+            ...current,
+            progress: progress.progress,
+            progressLabel: progress.label,
+          }));
+        },
+      });
 
       updateDraft((current) => ({
         ...current,
-        receiptId: receipt.id,
+        receiptId: processed.receiptId ?? current.receiptId,
         step: 'review',
         method,
-        imageUrl: signedUrl ?? current.imageUrl,
+        imageUrl: processed.signedPreviewUrl ?? current.imageUrl,
         imageName: file.name,
-        merchant: file.name.replace(/\.[^.]+$/, ''),
-        receiptTotal: ocrData.total ?? 0,
-        items: parsedItems,
+        merchant: processed.merchant,
+        receiptTotal: processed.receiptTotal,
+        items: processed.items,
         progress: 100,
         progressLabel: undefined,
         error: undefined,
@@ -243,7 +232,7 @@ export const ReceiptCaptureFlow = ({
         step: method,
         method,
         error:
-          getApiErrorMessage(error) ||
+          api.getApiErrorMessage(error) ||
           (error instanceof Error
             ? error.message
             : 'We could not prepare this receipt. Please try again.'),
@@ -267,20 +256,24 @@ export const ReceiptCaptureFlow = ({
   };
 
   const handleManualSubmit = (manualEntry: ManualEntryData) => {
-    const draftItems = createManualReviewItems(manualEntry);
+    updateDraft((current) => {
+      const built = ocrProvider.applyManualEntry(manualEntry, {
+        previousMerchant: current.merchant,
+      });
 
-    updateDraft((current) => ({
-      ...current,
-      step: 'review',
-      method: 'manual',
-      items: draftItems,
-      receiptTotal: Number.parseFloat(manualEntry.amount),
-      merchant: manualEntry.merchant.trim() || current.merchant || 'Manual receipt',
-      manualEntry,
-      progress: 100,
-      progressLabel: undefined,
-      error: undefined,
-    }));
+      return {
+        ...current,
+        step: 'review',
+        method: 'manual',
+        items: built.items,
+        receiptTotal: built.receiptTotal,
+        merchant: built.merchant,
+        manualEntry: built.manualEntry,
+        progress: 100,
+        progressLabel: undefined,
+        error: undefined,
+      };
+    });
   };
 
   const handleApply = (items: ParsedItem[]) => {

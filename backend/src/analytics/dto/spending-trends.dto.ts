@@ -1,5 +1,4 @@
 import { IsOptional, IsString, IsIn, IsISO8601 } from "class-validator";
-import { Type } from "class-transformer";
 
 export class SpendingTrendsDto {
   @IsOptional()

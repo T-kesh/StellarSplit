@@ -153,19 +153,26 @@ mod tests {
     // ============================================
 
     #[test]
-    fn test_deterministic_id_generation() {
+    fn test_deterministic_id_same_ledger_sequence() {
         let (env, creator, client) = setup();
 
         let name = SorobanString::from_str(&env, "Deterministic Test");
         let participants1 = create_equal_split_participants(&env, 2);
         let participants2 = create_equal_split_participants(&env, 2);
 
+        // Set the same ledger sequence for both creations
+        env.ledger().set_sequence(12345);
         let id1 = client.create_template(&creator, &name, &SplitType::Equal, &participants1);
 
+        // Reset to same sequence for second creation
+        env.ledger().set_sequence(12345);
         let id2 = client.create_template(&creator, &name, &SplitType::Equal, &participants2);
 
-        // IDs should be the same when created with same inputs
+        // IDs should be the same when created with same inputs and ledger sequence
         assert_eq!(id1, id2);
+        
+        // Verify ID format is 64-character hex string
+        assert_eq!(id1.len(), 64);
     }
 
     #[test]
@@ -177,12 +184,103 @@ mod tests {
         let participants1 = create_equal_split_participants(&env, 2);
         let participants2 = create_equal_split_participants(&env, 2);
 
+        // Use same ledger sequence to isolate name difference
+        env.ledger().set_sequence(12345);
         let id1 = client.create_template(&creator, &name1, &SplitType::Equal, &participants1);
 
+        env.ledger().set_sequence(12345);
         let id2 = client.create_template(&creator, &name2, &SplitType::Equal, &participants2);
 
         // Different names should produce different IDs
         assert_ne!(id1, id2);
+    }
+
+    #[test]
+    fn test_same_name_different_creators_different_ids() {
+        let (env, creator1, client) = setup();
+        let creator2 = Address::generate(&env);
+
+        let name = SorobanString::from_str(&env, "Same Name");
+        let participants1 = create_equal_split_participants(&env, 2);
+        let participants2 = create_equal_split_participants(&env, 2);
+
+        // Use same ledger sequence to isolate creator difference
+        env.ledger().set_sequence(12345);
+        let id1 = client.create_template(&creator1, &name, &SplitType::Equal, &participants1);
+
+        env.ledger().set_sequence(12345);
+        let id2 = client.create_template(&creator2, &name, &SplitType::Equal, &participants2);
+
+        // Same name with different creators should produce different IDs
+        assert_ne!(id1, id2);
+    }
+
+    #[test]
+    fn test_same_creator_different_times_different_ids() {
+        let (env, creator, client) = setup();
+
+        let name = SorobanString::from_str(&env, "Time Sensitive");
+        let participants1 = create_equal_split_participants(&env, 2);
+        let participants2 = create_equal_split_participants(&env, 2);
+
+        // Different ledger sequences should produce different IDs
+        env.ledger().set_sequence(12345);
+        let id1 = client.create_template(&creator, &name, &SplitType::Equal, &participants1);
+
+        env.ledger().set_sequence(12346);
+        let id2 = client.create_template(&creator, &name, &SplitType::Equal, &participants2);
+
+        // Same creator and name but different times should produce different IDs
+        assert_ne!(id1, id2);
+    }
+
+    #[test]
+    fn test_duplicate_name_collision_handling() {
+        let (env, creator, client) = setup();
+
+        let name = SorobanString::from_str(&env, "Collision Test");
+        let participants = create_equal_split_participants(&env, 2);
+
+        // Create template at time 1
+        env.ledger().set_sequence(1000);
+        let id1 = client.create_template(&creator, &name, &SplitType::Equal, &participants);
+
+        // Create template with same name at time 2
+        env.ledger().set_sequence(2000);
+        let id2 = client.create_template(&creator, &name, &SplitType::Equal, &participants);
+
+        // Should be different IDs due to different ledger sequences
+        assert_ne!(id1, id2);
+        
+        // Both templates should be retrievable
+        let template1 = client.get_template(&id1);
+        let template2 = client.get_template(&id2);
+        
+        assert_eq!(template1.name, name);
+        assert_eq!(template2.name, name);
+        assert_eq!(template1.creator, creator);
+        assert_eq!(template2.creator, creator);
+    }
+
+    #[test]
+    fn test_id_hex_format_validation() {
+        let (env, creator, client) = setup();
+
+        let name = SorobanString::from_str(&env, "Format Test");
+        let participants = create_equal_split_participants(&env, 2);
+
+        env.ledger().set_sequence(999);
+        let template_id = client.create_template(&creator, &name, &SplitType::Equal, &participants);
+
+        // Verify ID is 64-character hex string
+        assert_eq!(template_id.len(), 64);
+        
+        // Verify all characters are valid hex (uppercase)
+        let id_str = template_id.to_str();
+        for char in id_str.chars() {
+            assert!(char.is_ascii_hexdigit());
+            assert!(char.is_uppercase() || char.is_ascii_digit());
+        }
     }
 
     // ============================================

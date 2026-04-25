@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { DollarSign, Receipt, BellRing, WalletCards, RefreshCw } from "lucide-react";
 import { Link } from "react-router-dom";
+import type { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
 import { useWallet } from "../hooks/use-wallet";
 import {
@@ -18,6 +19,7 @@ import { formatCurrency, formatRelativeTime } from "../utils/format";
 function describeActivity(
   activity: ApiActivityRecord,
   currency: string,
+  t: TFunction,
 ): { title: string; amount?: string } {
   const amount = normalizeDecimal(activity.metadata.amount as number | string | undefined);
   const totalAmount = normalizeDecimal(activity.metadata.totalAmount as number | string | undefined);
@@ -28,39 +30,39 @@ function describeActivity(
     case "split_created":
       return {
         title: titleFromMetadata
-          ? `Created ${titleFromMetadata}`
-          : "Created a new split",
+          ? t("dashboard.activity.createdWithTitle", { title: titleFromMetadata })
+          : t("dashboard.activity.created"),
         amount: totalAmount > 0 ? formatCurrency(totalAmount, currency) : undefined,
       };
     case "payment_made":
       return {
         title: titleFromMetadata
-          ? `Paid toward ${titleFromMetadata}`
-          : "Payment sent",
+          ? t("dashboard.activity.paidToward", { title: titleFromMetadata })
+          : t("dashboard.activity.paymentSent"),
         amount: amount > 0 ? formatCurrency(amount, currency) : undefined,
       };
     case "payment_received":
       return {
         title: titleFromMetadata
-          ? `Received payment for ${titleFromMetadata}`
-          : "Payment received",
+          ? t("dashboard.activity.receivedFor", { title: titleFromMetadata })
+          : t("dashboard.activity.paymentReceived"),
         amount: amount > 0 ? formatCurrency(amount, currency) : undefined,
       };
     case "split_completed":
       return {
         title: titleFromMetadata
-          ? `${titleFromMetadata} was completed`
-          : "A split was completed",
+          ? t("dashboard.activity.completedWithTitle", { title: titleFromMetadata })
+          : t("dashboard.activity.splitCompleted"),
       };
     case "split_edited":
       return {
         title: titleFromMetadata
-          ? `Updated ${titleFromMetadata}`
-          : "Updated a split",
+          ? t("dashboard.activity.updatedWithTitle", { title: titleFromMetadata })
+          : t("dashboard.activity.splitUpdated"),
       };
     default:
       return {
-        title: titleFromMetadata ?? "Activity update",
+        title: titleFromMetadata ?? t("dashboard.activity.generic"),
         amount: amount > 0 ? formatCurrency(amount, currency) : undefined,
       };
   }
@@ -151,32 +153,37 @@ export default function DashboardPage() {
       return [];
     }
 
+    const openSplitLine =
+      summary.splitsCreated === 1
+        ? t("dashboard.stats.openSplitsYouCreatedOne", { count: summary.splitsCreated })
+        : t("dashboard.stats.openSplitsYouCreatedMany", { count: summary.splitsCreated });
+
     return [
       {
         title: t("dashboard.stats.youOwe"),
         value: formatCurrency(normalizeDecimal(summary.totalOwed), currency),
-        change: "Across your active splits",
+        change: t("dashboard.stats.acrossActiveSplits"),
         icon: DollarSign,
         color: "bg-rose-500",
       },
       {
-        title: "Owed to you",
+        title: t("dashboard.stats.owedToYou"),
         value: formatCurrency(normalizeDecimal(summary.totalOwedToUser), currency),
-        change: "Waiting to be settled",
+        change: t("dashboard.stats.waitingToSettle"),
         icon: WalletCards,
         color: "bg-emerald-500",
       },
       {
         title: t("dashboard.stats.pendingSplits"),
         value: String(summary.activeSplits),
-        change: "Splits still in progress",
+        change: t("dashboard.stats.splitsInProgress"),
         icon: Receipt,
         color: "bg-orange-500",
       },
       {
-        title: "Unread activity",
+        title: t("dashboard.stats.unreadActivity"),
         value: String(summary.unreadNotifications),
-        change: `${summary.splitsCreated} open split${summary.splitsCreated === 1 ? "" : "s"} created by you`,
+        change: openSplitLine,
         icon: BellRing,
         color: "bg-blue-500",
       },
@@ -186,7 +193,7 @@ export default function DashboardPage() {
   return (
     <main
       className="min-h-dvh bg-theme [padding-top:calc(clamp(1rem,3vw,1.5rem)+env(safe-area-inset-top))] [padding-right:calc(clamp(0.75rem,4vw,1.5rem)+env(safe-area-inset-right))] [padding-bottom:calc(clamp(1rem,3vw,1.5rem)+env(safe-area-inset-bottom))] [padding-left:calc(clamp(0.75rem,4vw,1.5rem)+env(safe-area-inset-left))]"
-      aria-label="Dashboard"
+      aria-label={t("dashboard.ariaLabel")}
     >
       <div className="max-w-7xl mx-auto">
         <header className="mb-[clamp(1.25rem,4vw,2rem)] flex flex-wrap items-start justify-between gap-4">
@@ -197,9 +204,12 @@ export default function DashboardPage() {
             <p className="text-sm text-muted-theme mt-0.5">
               {activeUserId
                 ? profile?.displayName
-                  ? `Signed in as ${profile.displayName}`
-                  : `Signed in as ${activeUserId.slice(0, 6)}...${activeUserId.slice(-4)}`
-                : "Connect your wallet to load live split totals and activity."}
+                  ? t("dashboard.signedInName", { name: profile.displayName })
+                  : t("dashboard.signedInWallet", {
+                      start: activeUserId.slice(0, 6),
+                      end: activeUserId.slice(-4),
+                    })
+                : t("dashboard.connectToLoad")}
             </p>
           </div>
 
@@ -210,23 +220,23 @@ export default function DashboardPage() {
               className="inline-flex items-center gap-2 rounded-xl border border-theme bg-card-theme px-4 py-2 text-sm font-semibold text-theme transition hover:bg-surface"
             >
               <RefreshCw className="h-4 w-4" />
-              Refresh
+              {t("dashboard.refresh")}
             </button>
           ) : null}
         </header>
 
         {!activeUserId ? (
           <div className="rounded-2xl border border-theme bg-card-theme p-8 shadow-sm">
-            <h2 className="text-xl font-bold text-theme">Connect your wallet to continue</h2>
+            <h2 className="text-xl font-bold text-theme">{t("dashboard.connectToContinue")}</h2>
             <p className="mt-2 text-sm text-muted-theme">
-              Dashboard cards, recent activity, and split balances load from the backend for the currently connected account.
+              {t("dashboard.connectToContinueSub")}
             </p>
           </div>
         ) : isLoading ? (
           <DashboardLoadingState />
         ) : error ? (
           <div className="rounded-2xl border border-red-200 bg-red-50 p-6 shadow-sm">
-            <h2 className="text-lg font-bold text-red-800">Could not load your dashboard</h2>
+            <h2 className="text-lg font-bold text-red-800">{t("dashboard.loadErrorTitle")}</h2>
             <p className="mt-2 text-sm text-red-700">{error}</p>
             <button
               type="button"
@@ -234,7 +244,7 @@ export default function DashboardPage() {
               className="mt-4 inline-flex items-center gap-2 rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-700"
             >
               <RefreshCw className="h-4 w-4" />
-              Retry
+              {t("dashboard.retry")}
             </button>
           </div>
         ) : (
@@ -274,21 +284,23 @@ export default function DashboardPage() {
                     className="inline-flex items-center gap-2 rounded-lg border border-theme px-3 py-1.5 text-xs font-semibold text-theme transition hover:bg-surface"
                   >
                     <RefreshCw className="h-3.5 w-3.5" />
-                    Retry fetch
+                    {t("dashboard.retryFetch")}
                   </button>
                 </div>
 
                 {activities.length === 0 ? (
                   <div className="mt-6 rounded-2xl border border-dashed border-theme p-8 text-center">
-                    <p className="text-base font-semibold text-theme">No recent activity yet</p>
+                    <p className="text-base font-semibold text-theme">
+                      {t("dashboard.noActivityTitle")}
+                    </p>
                     <p className="mt-2 text-sm text-muted-theme">
-                      Split creation, receipt updates, and payment events will appear here once the backend records them.
+                      {t("dashboard.noActivitySub")}
                     </p>
                   </div>
                 ) : (
                   <div className="mt-4 divide-y divide-theme">
                     {activities.map((activity) => {
-                      const description = describeActivity(activity, currency);
+                      const description = describeActivity(activity, currency, t);
                       const content = (
                         <>
                           <div className="min-w-0">
@@ -296,7 +308,12 @@ export default function DashboardPage() {
                               {description.title}
                             </p>
                             <p className="text-xs sm:text-sm text-muted-theme mt-0.5 truncate">
-                              {activity.splitId ? `Split ${activity.splitId.slice(0, 8)}` : "Account activity"} • {formatRelativeTime(new Date(activity.createdAt))}
+                              {activity.splitId
+                                ? t("dashboard.splitPrefix", {
+                                    id: activity.splitId.slice(0, 8),
+                                  })
+                                : t("dashboard.accountActivity")}{" "}
+                              • {formatRelativeTime(new Date(activity.createdAt))}
                             </p>
                           </div>
                           {description.amount ? (
@@ -338,7 +355,7 @@ export default function DashboardPage() {
                     to="/history"
                     className="inline-flex items-center justify-center rounded-xl bg-slate-800 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-900"
                   >
-                    View History
+                    {t("dashboard.viewHistory")}
                   </Link>
                   <Link
                     to="/analytics"

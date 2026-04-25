@@ -43,7 +43,14 @@ export class PushNotificationsService {
     return this.deviceRepo.save(device);
   }
 
-  async unregisterDevice(deviceId: string): Promise<void> {
+  async unregisterDevice(deviceId: string, userId: string): Promise<void> {
+    const device = await this.deviceRepo.findOne({ where: { id: deviceId } });
+    if (!device) {
+      throw new Error('Device not found');
+    }
+    if (device.userId !== userId) {
+      throw new Error('Device does not belong to user');
+    }
     await this.deviceRepo.delete(deviceId);
   }
 
@@ -89,6 +96,22 @@ export class PushNotificationsService {
     body: string,
     data?: Record<string, string>,
   ): Promise<void> {
+    // Check preferences before queuing
+    const pref = await this.prefRepo.findOne({
+      where: { userId, eventType },
+    });
+
+    if (pref && !pref.pushEnabled) {
+      this.logger.log(`Push disabled for user ${userId} event ${eventType}`);
+      return;
+    }
+
+    // Check quiet hours before queuing
+    if (pref && this.isQuietHours(pref)) {
+      this.logger.log(`Quiet hours active for user ${userId}`);
+      return;
+    }
+
     await this.pushQueue.add('sendPush', {
       userId,
       eventType,
@@ -97,6 +120,48 @@ export class PushNotificationsService {
       data,
     });
     this.logger.log(`Queued push notification for user ${userId} event ${eventType}`);
+  }
+
+  async sendTestNotification(
+    userId: string,
+    title: string,
+    body: string,
+    data?: Record<string, string>,
+  ): Promise<void> {
+    // Test notifications bypass preference and quiet hours checks
+    await this.pushQueue.add('sendPush', {
+      userId,
+      eventType: NotificationEventType.SPLIT_CREATED, // Use a default event type
+      title,
+      body,
+      data,
+    });
+    this.logger.log(`Queued test push notification for user ${userId}`);
+  }
+
+  private isQuietHours(pref: NotificationPreference): boolean {
+    if (!pref.quietHoursStart || !pref.quietHoursEnd) return false;
+
+    const now = new Date();
+    const userTime = pref.timezone
+        ? new Date(now.toLocaleString('en-US', { timeZone: pref.timezone }))
+        : now;
+
+    const currentHour = userTime.getHours();
+    const currentMinute = userTime.getMinutes();
+    const currentTimeVal = currentHour * 60 + currentMinute;
+
+    const [startH, startM] = pref.quietHoursStart.split(':').map(Number);
+    const startVal = startH * 60 + startM;
+
+    const [endH, endM] = pref.quietHoursEnd.split(':').map(Number);
+    const endVal = endH * 60 + endM;
+
+    if (startVal < endVal) {
+      return currentTimeVal >= startVal && currentTimeVal < endVal;
+    } else {
+      return currentTimeVal >= startVal || currentTimeVal < endVal;
+    }
   }
 
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT)

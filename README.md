@@ -10,6 +10,15 @@ This repository is organized as a monorepo:
 
 - **[/frontend](./frontend)**: React + TypeScript + Tailwind CSS application for the user interface.
 - **[/backend](./backend)**: NestJS + PostgreSQL API server for processing splits and payments.
+- **[/docs](./docs)**: Comprehensive project documentation.
+
+## 📚 Documentation
+
+- **[API Reference](./docs/API.md)**: Complete API endpoint documentation with validated payloads.
+- **[Component Catalog](./docs/COMPONENTS.md)**: Reusable frontend components and hooks.
+- **[Authentication Guide](./docs/AUTHENTICATION.md)**: JWT and development bypass headers.
+- **[Receipt Flow](./docs/RECEIPT_FLOW.md)**: End-to-end guide on OCR and receipt processing.
+- **[Data Provenance](./docs/data-provenance.md)**: Status of live vs. mock data across the app.
 
 ## 🚀 Getting Started
 

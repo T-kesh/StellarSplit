@@ -1,8 +1,8 @@
 import React from "react";
-import { PaymentResult } from "../../types/payment";
+import type { PaymentResult as PaymentResultData } from "../../types/payment";
 
 interface Props {
-  result: PaymentResult;
+  result: PaymentResultData;
   onRetry: () => void;
   onBackToSplit: (splitId?: string) => void;
 }

@@ -1,14 +1,12 @@
-import { Controller, Post, Body, Delete, Param, Get, Put, Req, Logger, UseGuards } from '@nestjs/common';
+import { Controller, Post, Body, Delete, Param, Get, Put, Req, Logger, UseGuards, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { PushNotificationsService } from './push-notifications.service';
 import { RegisterDeviceDto } from './dto/register-device.dto';
 import { UpdatePreferencesDto } from './dto/update-preferences.dto';
 import { NotificationEventType } from './entities/notification-preference.entity';
-
-// Assuming there's an AuthGuard available globally or I should add it.
-// Given the other controller example, there's no explicit @UseGuards on the controller class, 
-// maybe it's global or I missed it. But req.user is accessed.
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @Controller('push')
+@UseGuards(JwtAuthGuard)
 export class PushNotificationsController {
   private readonly logger = new Logger(PushNotificationsController.name);
 
@@ -16,52 +14,61 @@ export class PushNotificationsController {
 
   @Post('register-device')
   async registerDevice(@Body() dto: RegisterDeviceDto, @Req() req: any) {
-    // If authenticated, use the wallet address from the token
-    if (req.user && req.user.walletAddress) {
-        dto.userId = req.user.walletAddress;
+    const userId = req.user?.walletAddress;
+    if (!userId) {
+      throw new BadRequestException('User authentication required');
     }
+    dto.userId = userId;
     return this.pushService.registerDevice(dto);
   }
 
   @Delete('unregister-device/:deviceId')
-  async unregisterDevice(@Param('deviceId') deviceId: string) {
-    return this.pushService.unregisterDevice(deviceId);
+  async unregisterDevice(@Param('deviceId') deviceId: string, @Req() req: any) {
+    const userId = req.user?.walletAddress;
+    if (!userId) {
+      throw new BadRequestException('User authentication required');
+    }
+    return this.pushService.unregisterDevice(deviceId, userId);
   }
 
   @Get('devices')
   async getDevices(@Req() req: any) {
-    const userId = req.user?.walletAddress || req.query?.userId;
+    const userId = req.user?.walletAddress;
     if (!userId) {
-        // Return 400 or empty list
-        return [];
+      throw new BadRequestException('User authentication required');
     }
     return this.pushService.getDevices(userId);
   }
 
   @Put('preferences')
   async updatePreferences(@Body() dto: UpdatePreferencesDto, @Req() req: any) {
-    if (req.user && req.user.walletAddress) {
-        dto.userId = req.user.walletAddress;
+    const userId = req.user?.walletAddress;
+    if (!userId) {
+      throw new BadRequestException('User authentication required');
     }
+    dto.userId = userId;
     return this.pushService.updatePreferences(dto);
   }
 
   @Get('preferences')
   async getPreferences(@Req() req: any) {
-    const userId = req.user?.walletAddress || req.query.userId;
+    const userId = req.user?.walletAddress;
     if (!userId) {
-        return [];
+      throw new BadRequestException('User authentication required');
     }
     return this.pushService.getPreferences(userId);
   }
 
-  @Post('test')
-  async sendTestNotification(@Body() body: { userId: string, title?: string, message?: string }) {
-    const { userId, title, message } = body;
-    await this.pushService.sendNotification(
-        userId, 
-        NotificationEventType.SPLIT_CREATED, // Just a test event type
-        title || 'Test Notification', 
+  @Post('test-internal')
+  async sendTestNotification(@Body() body: { title?: string, message?: string }, @Req() req: any) {
+    const userId = req.user?.walletAddress;
+    if (!userId) {
+      throw new BadRequestException('User authentication required');
+    }
+    const { title, message } = body;
+    await this.pushService.sendTestNotification(
+        userId,
+        title || 'Test Notification',
         message || 'This is a test notification from StellarSplit'
     );
     return { success: true };

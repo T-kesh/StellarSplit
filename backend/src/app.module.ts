@@ -13,10 +13,9 @@ import databaseConfig from "./config/database.config";
 import { getRedisConnectionOptions } from "./config/redis.config";
 
 import { AnalyticsModule } from "./analytics/analytics.module";
-import { CommonModule } from "./common/common.module";
 import { ComplianceModule } from "./compliance/compliance.module";
+import { CollaborationModule } from "./collaboration/collaboration.module";
 import { DashboardModule } from "./dashboard/dashboard.module";
-import { DebtSimplificationModule } from "./debt-simplification/debt-simplification.module";
 import { DisputesModule } from "./disputes/disputes.module";
 import { EmailModule } from "./email/email.module";
 import { ExportModule } from "./export/export.module";
@@ -41,10 +40,15 @@ import { SearchModule } from "./search/search.module";
 import { SettlementModule } from "./settlement/settlement.module";
 import { SplitCommentsModule } from "./split-comments/split-comments.module";
 import { SplitHistoryModule } from "./split-history/split-history.module";
+import { SplitTemplateModule } from "./split-template/split-template.module";
 import { StellarModule } from "./stellar/stellar.module";
 import { TemplatesModule } from "./templates/templates.module";
 import { UploadModule } from "./uploads/upload.module";
+import { ShortLinksModule } from "./short-links/short-links.module";
 import { WebhooksModule } from "./webhooks/webhooks.module";
+import { ReputationModule } from "./reputation/reputation.module";
+import { FraudDetectionModule } from "./fraud-detection/fraud-detection.module";
+import { SecurityModule } from "./security/security.module";
 // Duplicate imports removed; already imported above.
 // Load environment variables
 dotenv.config({
@@ -91,6 +95,7 @@ dotenv.config({
     }),
 
     // ✅ Feature modules
+    SecurityModule,
     HealthModule,
     StellarModule,
     PaymentsModule,
@@ -114,11 +119,13 @@ dotenv.config({
     WebhooksModule,
     // Dispute resolution system for split conflicts
     DisputesModule,
+    ReputationModule,
     // DAO Governance system for platform decisions
     GovernanceModule,
     // Compliance module for tax reporting and exports
     ComplianceModule,
     SettlementModule,
+    SplitTemplateModule,
     TemplatesModule,
     PushNotificationsModule,
     ArchivingModule,
@@ -126,6 +133,10 @@ dotenv.config({
     SchedulerModule,
     UploadModule,
     ProfileModule,
+    CollaborationModule,
+    DashboardModule,
+    ShortLinksModule,
+    FraudDetectionModule,
     // Duplicated modules were already included earlier.
   ],
 })

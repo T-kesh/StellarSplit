@@ -12,6 +12,7 @@ use soroban_sdk::{
 mod events;
 mod storage;
 mod types;
+mod error_map;
 
 #[cfg(test)]
 mod test;
@@ -29,7 +30,7 @@ impl PathPaymentContract {
     /// Initialize with an admin. Admin can register pairs and set swap router.
     pub fn initialize(env: Env, admin: Address) -> Result<(), Error> {
         if storage::is_initialized(&env) {
-            return Err(Error::NotInitialized); // already initialized
+            return Err(Error::AlreadyInitialized);
         }
         admin.require_auth();
         storage::set_admin(&env, &admin);
@@ -236,7 +237,7 @@ impl PathPaymentContract {
                     amount_in,
                     "no_router_set",
                 );
-                return Err(Error::SwapFailed);
+                return Err(Error::MissingRouter);
             }
         };
         for i in 0..path.len() - 1 {

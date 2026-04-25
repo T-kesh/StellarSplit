@@ -6,7 +6,7 @@ import {
   ConflictException,
 } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository, LessThanOrEqual, IsNull } from "typeorm";
+import { Repository, LessThanOrEqual, IsNull, MoreThan } from "typeorm";
 import { RecurringSplit, RecurrenceFrequency } from "./recurring-split.entity";
 import { Split } from "../entities/split.entity";
 import { Participant } from "../entities/participant.entity";
@@ -326,13 +326,26 @@ export class RecurringSplitsService {
    */
   async getRecurringSplitsDueForProcessing(): Promise<RecurringSplit[]> {
     const now = new Date();
+    // Use an array of where-clauses (TypeORM OR) to correctly handle
+    // splits with no end date and splits whose end date is still in the future.
     return this.recurringSplitRepository.find({
-      where: {
-        isActive: true,
-        endDate: IsNull() || LessThanOrEqual(now),
-        nextOccurrence: LessThanOrEqual(now),
-      },
+      where: [
+        { isActive: true, endDate: IsNull(), nextOccurrence: LessThanOrEqual(now) },
+        { isActive: true, endDate: MoreThan(now), nextOccurrence: LessThanOrEqual(now) },
+      ],
       relations: ["templateSplit"],
+    });
+  }
+
+  /**
+   * Get all active recurring splits regardless of creator — used by the scheduler
+   * for full-scan operations such as expiry cleanup.
+   */
+  async getAllActiveRecurringSplits(): Promise<RecurringSplit[]> {
+    return this.recurringSplitRepository.find({
+      where: { isActive: true },
+      relations: ["templateSplit"],
+      order: { createdAt: "DESC" },
     });
   }
 

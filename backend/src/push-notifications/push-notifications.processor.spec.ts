@@ -93,31 +93,22 @@ describe('PushNotificationProcessor', () => {
     };
     const mockJob = { data: jobData } as Job;
 
-    it('should not send if push disabled', async () => {
-      mockPrefRepo.findOne.mockResolvedValue({
-        pushEnabled: false,
-      });
+    it('should not send when there are no active devices', async () => {
+      mockDeviceRepo.find.mockResolvedValue([]);
 
       await processor.handleSendPush(mockJob);
 
-      expect(mockDeviceRepo.find).not.toHaveBeenCalled();
+      expect(mockDeviceRepo.find).toHaveBeenCalled();
       expect(mockSendEachForMulticast).not.toHaveBeenCalled();
     });
 
-    it('should not send during quiet hours', async () => {
-        jest.useFakeTimers();
-        jest.setSystemTime(new Date('2023-01-01T10:00:00Z'));
-
-        mockPrefRepo.findOne.mockResolvedValue({
-            pushEnabled: true,
-            quietHoursStart: '09:00',
-            quietHoursEnd: '17:00',
-        });
+    it('should not send when Firebase is unavailable', async () => {
+        mockDeviceRepo.find.mockResolvedValue([{ deviceToken: 'token1' }]);
+        (processor as any).firebaseApp = undefined;
 
         await processor.handleSendPush(mockJob);
 
-        expect(mockDeviceRepo.find).not.toHaveBeenCalled();
-        jest.useRealTimers();
+        expect(mockSendEachForMulticast).not.toHaveBeenCalled();
     });
 
     it('should send if enabled and not quiet hours', async () => {

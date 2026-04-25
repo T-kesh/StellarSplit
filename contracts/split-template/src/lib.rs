@@ -9,6 +9,7 @@
 use soroban_sdk::{contract, contractimpl, Address, Env, String, Vec};
 
 mod events;
+mod id;
 mod storage;
 mod types;
 mod utils;
@@ -182,12 +183,10 @@ impl SplitTemplateContract {
 
     /// Generate a deterministic template ID.
     ///
-    /// Creates a template ID from hash of creator address, name, and ledger timestamp.
+    /// Creates a template ID from hash of creator address, name, and ledger sequence.
     /// This ensures uniqueness even with same name from same creator at different times.
     fn generate_template_id(env: &Env, creator: &Address, name: &String) -> String {
-        // TODO: Use hash for production uniqueness
-        // For now, use name as simple ID
-        name.clone()
+        id::generate_template_id(env, creator, name)
     }
 
     /// Validate participant shares based on split type.

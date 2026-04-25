@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import type { SplitStatus, SplitRole } from "../../pages/SplitHistoryPage";
 
 interface SplitCardProps {
@@ -9,7 +10,19 @@ interface SplitCardProps {
   participants: string[];
 }
 
+const statusLabelKey: Record<SplitStatus, string> = {
+  active: "history.statusActive",
+  completed: "history.statusCompleted",
+  cancelled: "history.statusCancelled",
+};
+
+const roleLabelKey: Record<SplitRole, string> = {
+  creator: "history.roleCreator",
+  participant: "history.roleParticipant",
+};
+
 export function SplitCard({ title, subtitle, amountLabel, status, role, participants }: SplitCardProps) {
+  const { t } = useTranslation();
   const statusClass =
     status === "completed"
       ? "bg-green-50 text-green-700 border-green-200"
@@ -29,10 +42,10 @@ export function SplitCard({ title, subtitle, amountLabel, status, role, particip
           <span
             className={`px-2 py-0.5 rounded-full text-xs font-medium border ${statusClass}`}
           >
-            {capitalize(status)}
+            {t(statusLabelKey[status])}
           </span>
           <span className="px-2 py-0.5 rounded-full text-xs font-medium border bg-purple-50 text-purple-700 border-purple-200">
-            {capitalize(role)}
+            {t(roleLabelKey[role])}
           </span>
         </div>
       </div>
@@ -41,8 +54,4 @@ export function SplitCard({ title, subtitle, amountLabel, status, role, particip
       </div>
     </div>
   );
-}
-
-function capitalize(str: string) {
-  return str.charAt(0).toUpperCase() + str.slice(1);
 }

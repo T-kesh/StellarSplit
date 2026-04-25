@@ -20,6 +20,12 @@ export class Friendship {
   status!: 'pending' | 'accepted' | 'blocked';
 
   @Column({ nullable: true })
+  requestedByUserId?: string | null;
+
+  @Column({ nullable: true })
+  blockedByUserId?: string | null;
+
+  @Column({ nullable: true })
   nickname?: string;
 
   @CreateDateColumn()

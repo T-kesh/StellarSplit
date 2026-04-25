@@ -87,4 +87,4 @@ describe('SplitCommentService', () => {
 
     await expect(service.deleteComment('c1', 'u2')).rejects.toThrow('You can only delete your own comments');
   });
-}
+});

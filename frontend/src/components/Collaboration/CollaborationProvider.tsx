@@ -125,7 +125,7 @@ export function CollaborationProvider({ children }: { children: ReactNode }) {
         }
     }, [socket]);
 
-    const resolveConflict = useCallback((field: string, resolution: 'local' | 'remote' | 'merge') => {    
+    const resolveConflict = useCallback((field: string, _resolution: 'local' | 'remote' | 'merge') => {    
         setConflicts((prev) => prev.filter(c => c.field !== field));
     }, []);
 

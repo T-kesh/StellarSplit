@@ -7,6 +7,7 @@ import {
 } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { verify, JwtPayload } from "jsonwebtoken";
+import { AuthUser } from "../types/auth-user.interface";
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
@@ -66,12 +67,17 @@ export class JwtAuthGuard implements CanActivate {
           throw new UnauthorizedException("JWT missing subject claim");
         }
 
-        request.user = {
+        const user: AuthUser = {
           id: payload.sub,
           walletAddress: payload.walletAddress || payload.sub,
           email: payload.email,
           raw: payload,
         };
+
+        // Backward compatibility: set wallet property to match walletAddress
+        (user as any).wallet = user.walletAddress;
+
+        request.user = user;
         return true;
       } catch (error) {
         throw new UnauthorizedException("Invalid or expired token");
@@ -81,7 +87,14 @@ export class JwtAuthGuard implements CanActivate {
     // Allow development bypass via x-user-id header
     const devUserId = request.headers["x-user-id"];
     if (devUserId && this.isDevBypassEnabled()) {
-      request.user = { id: devUserId, walletAddress: devUserId };
+      const user: AuthUser = {
+        id: devUserId as string,
+        walletAddress: devUserId as string,
+        raw: { sub: devUserId },
+      };
+      // Backward compatibility
+      (user as any).wallet = user.walletAddress;
+      request.user = user;
       return true;
     }
 

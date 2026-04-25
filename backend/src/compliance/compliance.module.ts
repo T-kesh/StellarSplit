@@ -14,13 +14,14 @@ import { JSONExporterService } from './exporters/json-exporter.service';
 import { OFXExporterService } from './exporters/ofx-exporter.service';
 import { ComplianceProcessor } from './compliance.processor';
 import { EmailModule } from '../email/email.module';
+import { QueueJobPolicy, JobPolicyTier } from '../common/queue-job-policy';
 
 @Module({
     imports: [
         TypeOrmModule.forFeature([ExpenseCategory, TaxExportRequest, Split]),
-        BullModule.registerQueue({
-            name: 'compliance-export',
-        }),
+        BullModule.registerQueue(
+            QueueJobPolicy.forQueue('compliance-export', JobPolicyTier.STANDARD),
+        ),
         EmailModule,
     ],
     controllers: [ComplianceController],

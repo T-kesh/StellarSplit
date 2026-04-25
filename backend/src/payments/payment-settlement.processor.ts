@@ -1,5 +1,5 @@
 import { Injectable, Logger } from "@nestjs/common";
-import { Processor, Process } from "@nestjs/bull";
+import { Processor, Process, OnQueueFailed } from "@nestjs/bull";
 import { Job } from "bull";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
@@ -8,6 +8,7 @@ import { Participant } from "../entities/participant.entity";
 import { Split } from "../entities/split.entity";
 import { EmailService } from "../email/email.service";
 import { EventsGateway } from "../gateway/events.gateway";
+import { logJobFailure } from "../common/queue-job-policy";
 
 /**
  * Job data for settlement processing
@@ -102,11 +103,17 @@ export class PaymentSettlementProcessor {
         `Settlement processed for payment: ${paymentId}`,
       );
     } catch (error: any) {
-      this.logger.error(
-        `Failed to process settlement for ${paymentId}: ${error.message}`,
-      );
+      logJobFailure(this.logger, job, error, { context: 'payment-settlement' });
       throw error;
     }
+  }
+
+  /**
+   * Dead-letter handler: fires when the settlement job has exhausted all retries.
+   */
+  @OnQueueFailed()
+  onFailed(job: Job<SettlementJobData>, err: Error) {
+    logJobFailure(this.logger, job, err, { context: 'payment-settlement-dead-letter' });
   }
 
   /**

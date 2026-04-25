@@ -17,7 +17,7 @@ import {
 import { SimplifiedDebt } from './entities/simplified-debt.entity';
 
 @UseGuards(JwtAuthGuard)
-@Controller('api/debt-simplification')
+@Controller('debt-simplification')
 export class DebtSimplificationController {
   constructor(private readonly debtSimplificationService: DebtSimplificationService) {}
 

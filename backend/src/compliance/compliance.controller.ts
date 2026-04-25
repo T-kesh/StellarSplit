@@ -1,16 +1,24 @@
-import { Controller, Post, Get, Put, Body, Param, Query, UseGuards } from '@nestjs/common';
+import { Controller, Post, Get, Put, Body, Param, Query, UseGuards, Req } from '@nestjs/common';
 import { ComplianceService } from './compliance.service';
 import { ExpenseCategory } from './entities/expense-category.entity';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { AuthorizationGuard } from '../auth/guards/authorization.guard';
+import { RequirePermissions } from '../auth/decorators/permissions.decorator';
+import { Permissions } from '../auth/decorators/permissions.decorator';
 
-@Controller('api/compliance')
+interface AuthRequest {
+  user: { walletAddress: string };
+}
+
+@Controller('compliance')
+@UseGuards(JwtAuthGuard, AuthorizationGuard)
 export class ComplianceController {
     constructor(private readonly complianceService: ComplianceService) { }
 
     @Post('export/request')
-    async requestExport(@Body() data: any) {
-        // In a real app, userId would come from auth guard
-        const userId = data.userId;
-        return this.complianceService.requestExport(userId, data);
+    @RequirePermissions(Permissions.CAN_CREATE_EXPORT)
+    async requestExport(@Body() data: any, @Req() req: AuthRequest) {
+        return this.complianceService.requestExport(req.user.walletAddress, data);
     }
 
     @Get('export/:requestId/status')
@@ -19,28 +27,32 @@ export class ComplianceController {
     }
 
     @Get('categories')
-    async getCategories(@Query('userId') userId: string) {
-        return this.complianceService.getCategories(userId);
+    @RequirePermissions(Permissions.CAN_READ_EXPORT)
+    async getCategories(@Req() req: AuthRequest) {
+        return this.complianceService.getCategories(req.user.walletAddress);
     }
 
     @Post('categories')
-    async createCategory(@Body() data: any) {
-        const userId = data.userId;
-        return this.complianceService.createCategory(userId, data);
+    @RequirePermissions(Permissions.CAN_CREATE_EXPORT)
+    async createCategory(@Body() data: any, @Req() req: AuthRequest) {
+        return this.complianceService.createCategory(req.user.walletAddress, data);
     }
 
     @Put('splits/:splitId/category')
+    @RequirePermissions(Permissions.CAN_UPDATE_SPLIT)
     async assignCategory(@Param('splitId') splitId: string, @Body('categoryId') categoryId: string) {
         return this.complianceService.assignCategoryToSplit(splitId, categoryId);
     }
 
     @Get('summary')
-    async getSummary(@Query('userId') userId: string, @Query('year') year: string) {
-        return this.complianceService.getSummary(userId, parseInt(year));
+    @RequirePermissions(Permissions.CAN_READ_EXPORT)
+    async getSummary(@Query('year') year: string, @Req() req: AuthRequest) {
+        return this.complianceService.getSummary(req.user.walletAddress, parseInt(year));
     }
 
-    @Get('tax-deductible-total')
-    async getTaxDeductibleTotal(@Query('userId') userId: string, @Query('period') period: string) {
-        return this.complianceService.getTaxDeductibleTotal(userId, period);
+    @Get('export/:requestId/download')
+    @RequirePermissions(Permissions.CAN_READ_EXPORT)
+    async downloadExport(@Param('requestId') requestId: string, @Req() req: AuthRequest) {
+        return this.complianceService.downloadExport(requestId, req.user.walletAddress);
     }
 }

@@ -45,11 +45,14 @@ fn setup() -> (
     escrow_client.set_treasury(&treasury);
     escrow_client.set_fee(&0u32);
 
+    let mut obligations = Map::new(&env);
+    obligations.set(participant.clone(), 10_000i128);
     let escrow_split_id = escrow_client.create_escrow(
         &creator,
         &String::from_str(&env, "Escrow split for disputes"),
         &10_000i128,
         &Map::new(&env),
+        &obligations,
         &None,
         &false,
         &None,

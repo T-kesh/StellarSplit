@@ -20,8 +20,12 @@ import { Split } from "../entities/split.entity";
 import { EmailService } from "../email/email.service";
 import { MultiCurrencyService } from "../multi-currency/multi-currency.service";
 import { EventsGateway } from "../gateway/events.gateway";
-import { AnalyticsService } from "@/analytics/analytics.service";
+import { AnalyticsService } from "../analytics/analytics.service";
+import { FraudDetectionService } from '../fraud-detection/fraud-detection.service';
+import type { AnalyzePaymentRequestDto } from "../fraud-detection/dto/analyze-split.dto";
 import * as crypto from "crypto";
+import { ReputationService } from "../reputation/reputation.service";
+import { ReputationEventType } from "../reputation/enums/reputation-event-type.enum";
 
 /**
  * Result of processing a payment submission
@@ -81,6 +85,8 @@ export class PaymentProcessorService {
     private readonly multiCurrencyService: MultiCurrencyService,
     private readonly dataSource: DataSource,
     @Optional() private readonly analyticsService?: AnalyticsService,
+    @Optional() private readonly fraudDetectionService?: FraudDetectionService,
+    @Optional() private readonly reputationService?: ReputationService,
     @Optional() private readonly customConfig?: Partial<PaymentProcessorConfig>,
   ) {
     this.config = { ...DEFAULT_CONFIG, ...customConfig };
@@ -96,6 +102,34 @@ export class PaymentProcessorService {
   ): string {
     const payload = `${splitId}:${participantId}:${txHash}`;
     return crypto.createHash("sha256").update(payload).digest("hex");
+  }
+
+  private resolveSplitDeadline(split: Partial<Split>, processedAt: Date): Date {
+    const directDeadline = split.dueDate ?? split.expiryDate;
+    if (directDeadline instanceof Date) {
+      return directDeadline;
+    }
+
+    if (typeof directDeadline === "string" || typeof directDeadline === "number") {
+      const parsedDeadline = new Date(directDeadline);
+      if (!Number.isNaN(parsedDeadline.getTime())) {
+        return parsedDeadline;
+      }
+    }
+
+    const createdAt = split.createdAt;
+    if (createdAt instanceof Date) {
+      return new Date(createdAt.getTime() + 30 * 24 * 60 * 60 * 1000);
+    }
+
+    if (typeof createdAt === "string" || typeof createdAt === "number") {
+      const parsedCreatedAt = new Date(createdAt);
+      if (!Number.isNaN(parsedCreatedAt.getTime())) {
+        return new Date(parsedCreatedAt.getTime() + 30 * 24 * 60 * 60 * 1000);
+      }
+    }
+
+    return processedAt;
   }
 
   /**
@@ -236,6 +270,37 @@ export class PaymentProcessorService {
         }
       }
 
+      // Perform fraud detection check
+      if (this.fraudDetectionService) {
+        try {
+          const fraudRequest: AnalyzePaymentRequestDto = {
+            payment_data: {
+              payment_id: key, // use idempotency key as temp id
+              split_id: splitId,
+              participant_id: participantId,
+              amount: receivedAmount,
+              asset: receivedAsset,
+              tx_hash: txHash,
+              sender_address: verificationResult.sender || '',
+              receiver_address: verificationResult.receiver || '',
+              timestamp: new Date(),
+            },
+          };
+          const fraudResult = await this.fraudDetectionService.checkPayment(fraudRequest);
+          if (!fraudResult.allowed) {
+            this.logger.warn(`Payment blocked due to fraud risk: ${fraudResult.riskLevel} for split ${splitId}`);
+            await queryRunner.rollbackTransaction();
+            throw new BadRequestException('Payment blocked due to fraud risk');
+          }
+        } catch (error) {
+          if (error instanceof BadRequestException) {
+            throw error;
+          }
+          // Log but don't fail the payment
+          this.logger.error(`Fraud detection failed for payment in split ${splitId}:`, error);
+        }
+      }
+
       // Determine payment status based on amount
       let paymentStatus: PaymentProcessingStatus;
       let settlementStatus: PaymentSettlementStatus;
@@ -251,6 +316,9 @@ export class PaymentProcessorService {
         settlementStatus = PaymentSettlementStatus.CONFIRMED;
       }
 
+      // One timestamp drives both persistence and reputation timing.
+      const processedAt = new Date();
+
       // Create payment record with idempotency key
       const payment = queryRunner.manager.create(Payment, {
         idempotencyKey: key,
@@ -265,13 +333,14 @@ export class PaymentProcessorService {
         reconciliationAttempts: 0,
         maxReconciliationAttempts: this.config.maxReconciliationAttempts,
         notificationsSent: false,
-        processedAt: new Date(),
+        processedAt,
         externalReference,
       });
 
       const savedPayment = await queryRunner.manager.save(Payment, payment);
 
       // Update participant's paid amount and status
+      const wasFullyPaidBefore = Number(participant.amountPaid) >= Number(participant.amountOwed) || participant.status === "paid";
       const newAmountPaid = participant.amountPaid + receivedAmount;
       let participantStatus: "pending" | "paid" | "partial" = "partial";
 
@@ -288,6 +357,25 @@ export class PaymentProcessorService {
 
       // Update split's total paid amount
       await this.updateSplitAmountPaidTransactional(queryRunner, splitId);
+
+      // Record reputation only when transitioning to fully paid (to avoid double counting).
+      if (participantStatus === "paid" && !wasFullyPaidBefore) {
+        const deadline = this.resolveSplitDeadline(split, processedAt);
+
+        const eventType =
+          processedAt.getTime() <= deadline.getTime()
+            ? ReputationEventType.PAID_ON_TIME
+            : ReputationEventType.PAID_LATE;
+
+        if (this.reputationService) {
+          await this.reputationService.recordEvent(
+            participant.userId,
+            splitId,
+            eventType,
+            queryRunner.manager,
+          );
+        }
+      }
 
       // Commit the transaction
       await queryRunner.commitTransaction();

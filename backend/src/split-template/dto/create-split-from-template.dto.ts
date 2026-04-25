@@ -1,33 +1,15 @@
-import {
-  IsEnum,
-  IsOptional,
-  IsString,
-  IsArray,
-  IsNumber,
-} from "class-validator";
-import { SplitType } from "../entities/split-template.entity";
+import { IsString, IsOptional, IsArray } from "class-validator";
 
-export class CreateSplitTemplateDto {
-  @IsString()
-  name!: string;
+export class CreateSplitFromTemplateDto {
+    @IsOptional()
+    @IsArray()
+    participantOverrides?: any[];
 
-  @IsOptional()
-  @IsString()
-  description?: string;
+    @IsOptional()
+    @IsArray()
+    itemOverrides?: any[];
 
-  @IsEnum(SplitType)
-  splitType!: SplitType;
-
-  @IsArray()
-  defaultParticipants!: any[];
-
-  @IsOptional()
-  @IsArray()
-  defaultItems?: any[];
-
-  @IsNumber()
-  taxPercentage!: number;
-
-  @IsNumber()
-  tipPercentage!: number;
+    @IsOptional()
+    @IsString()
+    customName?: string;
 }

@@ -6,7 +6,7 @@ interface AuthRequest extends Request {
   user: { walletAddress: string };
 }
 
-@Controller("api/reputation")
+@Controller("reputation")
 export class ReputationController {
   constructor(private readonly service: ReputationService) {}
 

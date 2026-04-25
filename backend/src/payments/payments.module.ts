@@ -20,20 +20,23 @@ import { AnalyticsModule } from "../analytics/analytics.module";
 import { GatewayModule } from "../gateway/gateway.module";
 import { IdempotencyService } from "../common/idempotency/idempotency.service";
 import { IdempotencyInterceptor } from "../common/idempotency/idempotency.interceptor";
+import { ReputationModule } from "../reputation/reputation.module";
+import { QueueJobPolicy, JobPolicyTier } from "../common/queue-job-policy";
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Payment, Participant, Split, IdempotencyRecord]),
     // Register Bull queues for payment processing
     BullModule.registerQueue(
-      { name: "payment-reconciliation" },
-      { name: "payment-settlement" },
+      QueueJobPolicy.forQueue('payment-reconciliation', JobPolicyTier.CRITICAL),
+      QueueJobPolicy.forQueue('payment-settlement', JobPolicyTier.CRITICAL),
     ),
     forwardRef(() => StellarModule),
     EmailModule,
     MultiCurrencyModule,
     AnalyticsModule,
     GatewayModule,
+    ReputationModule,
   ],
   controllers: [PaymentsController],
   providers: [

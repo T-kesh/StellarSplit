@@ -24,7 +24,7 @@ for new development unless you are maintaining a legacy integration.
 
 ## Table of Contents
 
-1. [Authentication](#authentication)
+1. [Authentication](AUTHENTICATION.md)
 2. [Quick-Start: Full Split Flow](#quick-start-full-split-flow)
 3. [Health](#health)
 4. [Splits](#splits)
@@ -36,12 +36,12 @@ for new development unless you are maintaining a legacy integration.
 10. [Recurring Splits](#recurring-splits)
 11. [Split Templates](#split-templates)
 12. [Groups](#groups)
-13. [Receipts](#receipts)
+13. [Receipts](#receipts) - [Flow Guide](RECEIPT_FLOW.md)
 14. [Split History](#split-history)
 15. [Search](#search)
 16. [Friends](#friends)
 17. [Notifications](#notifications)
-18. [Analytics](#analytics)
+18. [Analytics](#analytics) - [Data Provenance](data-provenance.md)
 19. [Export & Reporting](#export--reporting)
 20. [Webhooks](#webhooks)
 21. [Disputes](#disputes)
@@ -59,27 +59,20 @@ for new development unless you are maintaining a legacy integration.
 
 ## Authentication
 
-Many endpoints expect an authenticated user. The API supports **Bearer token (JWT)** authentication.
+Many endpoints expect an authenticated user. The API supports **Bearer token (JWT)** authentication and a **development bypass** for local testing.
 
-### Header
+See [AUTHENTICATION.md](AUTHENTICATION.md) for detailed header specifications and dev-mode instructions.
 
-Include the JWT in the `Authorization` header:
+### Headers
 
+**Production:**
 ```http
 Authorization: Bearer <your_jwt_token>
 ```
 
-### When Required
-
-- **Export** (`/api/export/*`): All routes use `JwtAuthGuard`; Bearer token required.
-- **Settlement**, **Templates**, **Groups**, **Split Templates**, **Short Links**, **Friends**, **Notifications (preferences)**: Expect `req.user` (e.g. `req.user.walletAddress`, `req.user.id`); send a valid JWT so the backend can resolve the user.
-- **Payments**, **Currency**, **Health**, **Search**, **Analytics**, **Compliance**, **Disputes**, **Governance**, **Webhooks**, **Receipts**, **Activities**, **Items**: May be public or use optional auth depending on configuration.
-
-### Example
-
-```bash
-curl -X GET "https://api.stellarsplit.com/api/export/list" \
-  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+**Development (Bypass):**
+```http
+x-user-id: <user_identifier>
 ```
 
 ---
@@ -98,14 +91,18 @@ POST /api/splits
 Content-Type: application/json
 
 {
-  "creatorId": "GDZST3XVCDTUJ76ZAV2HA72KYQODXXZ5PTMAPZGDHZ6CS7RO7MGG3DBM",
-  "title": "Dinner at Pizza Place",
-  "currency": "USD",
-  "totalAmount": 75.50,
-  "taxAmount": 6.80,
-  "tipAmount": 12.00,
-  "splitType": "equal",
-  "status": "active"
+  "totalAmount": 450.00,
+  "description": "Dinner at Nobu",
+  "creatorWalletAddress": "GCREATORWALLETADDRESS",
+  "preferredCurrency": "USD",
+  "dueDate": "2026-04-01T18:00:00.000Z",
+  "participants": [
+    {
+      "userId": "c65916df-0e49-4cfe-a3e8-a96c7da7c34a",
+      "amountOwed": 225.00,
+      "walletAddress": "GABC1234WALLETADDRESS"
+    }
+  ]
 }
 ```
 
@@ -119,7 +116,25 @@ Content-Type: application/json
   "currency": "USD",
   "totalAmount": 75.5,
   "status": "active",
-  "createdAt": "2026-02-26T12:00:00.000Z"
+  "isFrozen": false,
+  "description": "Dinner at Nobu",
+  "preferredCurrency": "USD",
+  "creatorWalletAddress": "GCREATORWALLETADDRESS",
+  "dueDate": "2026-04-01T18:00:00.000Z",
+  "createdAt": "2026-03-20T10:00:00.000Z",
+  "updatedAt": "2026-03-20T10:00:00.000Z",
+  "items": [],
+  "participants": [
+    {
+      "id": "6f0f6b90-07dc-42b7-bfca-a37b3db6e4c2",
+      "splitId": "91d71dcb-59f8-40c6-8e06-e3e408069e62",
+      "userId": "c65916df-0e49-4cfe-a3e8-a96c7da7c34a",
+      "amountOwed": 225.00,
+      "amountPaid": 0,
+      "status": "pending",
+      "walletAddress": "GABC1234WALLETADDRESS"
+    }
+  ]
 }
 ```
 
@@ -184,9 +199,10 @@ POST /api/payments/submit
 Content-Type: application/json
 
 {
-  "splitId": "550e8400-e29b-41d4-a716-446655440000",
-  "participantId": "660e8400-e29b-41d4-a716-446655440001",
-  "stellarTxHash": "a3c5f8b2e1d4..."
+  "splitId": "91d71dcb-59f8-40c6-8e06-e3e408069e62",
+  "participantId": "6f0f6b90-07dc-42b7-bfca-a37b3db6e4c2",
+  "stellarTxHash": "a3c5f8b2e1d4...",
+  "externalReference": "ORDER-12345"
 }
 ```
 
@@ -411,13 +427,12 @@ _Note: Participants CRUD may be provided by a separate service or the same app w
 
 ```json
 {
-  "id": "880e8400-e29b-41d4-a716-446655440003",
-  "splitId": "550e8400-e29b-41d4-a716-446655440000",
-  "name": "Margherita Pizza",
+  "name": "Sashimi Platter",
   "quantity": 1,
-  "unitPrice": 18.0,
-  "totalPrice": 18.0,
-  "assignedToIds": ["660e8400-e29b-41d4-a716-446655440001"]
+  "unitPrice": 120.00,
+  "totalPrice": 120.00,
+  "category": "food",
+  "assignedToIds": ["c65916df-0e49-4cfe-a3e8-a96c7da7c34a"]
 }
 ```
 
@@ -768,7 +783,7 @@ _Expects `req.user.walletAddress`._
 
 ## Receipts
 
-Base path: **`/api/api/receipts`** (controller path is `api/receipts` with global prefix `api`).
+Base path: **`/api/receipts`**.
 
 | Method   | URL                                          | Description                |
 | -------- | -------------------------------------------- | -------------------------- |
@@ -915,9 +930,23 @@ Base path: **`/api/api/analytics`**.
 
 **Authentication:** All export endpoints require Bearer token (`JwtAuthGuard`).
 
-### POST /api/export/create
+**Request body** — `CreateExportDto`: 
 
-**Request body** — `CreateExportDto`: format (CSV, PDF, JSON, QBO, OFX, XLSX), reportType, filters (startDate, endDate, categories, participants, minAmount, maxAmount, currency), etc.
+```json
+{
+  "format": "CSV",
+  "reportType": "monthly_summary",
+  "filters": {
+    "startDate": "2024-01-01",
+    "endDate": "2024-12-31",
+    "categories": ["food", "transportation"]
+  },
+  "settings": {
+    "includeTaxFields": true,
+    "includeReceipts": true
+  }
+}
+```
 
 **Response** `201 Created` — Export job (id, status, format, reportType, createdAt).
 

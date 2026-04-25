@@ -7,7 +7,12 @@ This document catalogs the reusable React components and custom hooks in this re
 > - `Default` is `—` when no explicit default is set in the component signature.
 > - `Dependencies` tags highlight wallet-connection and API/socket/data-fetch coupling when detectable from the source.
 
+> 🛠 **Regeneration Workflow**: This document can drift from the source. To assist in updating it, refer to the generator script at `docs/scripts/generate-components-docs.ts`. You can scaffold updates by extracting AST props with `react-docgen` or `ts-morph`.
+
 ## Components by Feature
+
+- [Receipt Processing Flow](RECEIPT_FLOW.md)
+- [Data Provenance & Mocks](data-provenance.md)
 
 <!-- COMPONENTS_SPLITS -->
 
@@ -790,7 +795,7 @@ export function Example() {
 
 Confirm-payment modal: shows amount, generates a payment QR (`QRCodeGenerator`), and optionally lets the user scan a QR (`QRCodeScanner`) to pre-fill/handle payment via `PaymentURIHandler`.
 
-**Dependencies:** Wallet deep-linking (Freighter-style payment links)
+**Dependencies:** `usePaymentCheckout` (Wallet deep-linking and network management)
 
 | Prop | Type | Required? | Default |
 |---|---|---|---|
@@ -1616,7 +1621,7 @@ Provides theme state (light/dark/system) and applies it to the DOM.
 | `children` | `ReactNode` | Yes | — |
 
 ```tsx
-import { ThemeProvider } from "@components/ThemeContex"
+import { ThemeProvider } from "@components/ThemeContext"
 import { ThemeToggle } from "@components/ThemeToggle"
 
 export function Example() {

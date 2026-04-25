@@ -13,6 +13,7 @@ import { AnalyticsReport } from "./reports.entity";
 import { AnalyticsController } from "./analytics.controller";
 import { AnalyticsProcessor } from "./analytics.processor";
 import { getRedisConnectionOptions } from "../config/redis.config";
+import { QueueJobPolicy, JobPolicyTier } from "../common/queue-job-policy";
 
 @Module({
   imports: [
@@ -27,7 +28,7 @@ import { getRedisConnectionOptions } from "../config/redis.config";
         ...getRedisConnectionOptions(configService),
       }),
     }),
-    BullModule.registerQueue({ name: "analytics-export" }),
+    BullModule.registerQueue(QueueJobPolicy.forQueue("analytics-export", JobPolicyTier.STANDARD)),
   ],
   controllers: [AnalyticsController],
   providers: [AnalyticsService, AnalyticsScheduler, AnalyticsProcessor],

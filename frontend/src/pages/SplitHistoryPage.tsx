@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { SplitTimeline } from "../components/SplitHistory/SplitTimeline";
 import {
   HistoryFilters,
@@ -6,113 +7,31 @@ import {
 } from "../components/SplitHistory/HistoryFilters";
 import { HistorySummary } from "../components/SplitHistory/HistorySummary";
 import { formatCurrency } from "../utils/format";
-import { apiClient } from "../utils/api-client";
-
-export type SplitStatus = "active" | "completed" | "cancelled";
-export type SplitRole = "creator" | "participant";
-
-export interface HistoryParticipant {
-  id: string;
-  name: string;
-}
-
-export interface HistorySplit {
-  id: string;
-  title: string;
-  totalAmount: number;
-  currency: string;
-  date: string; // ISO
-  status: SplitStatus;
-  participants: HistoryParticipant[];
-  role: SplitRole;
-}
-
-const MOCK_SPLITS: HistorySplit[] = [
-  {
-    id: "s-1001",
-    title: "Dinner at Nobu",
-    totalAmount: 450,
-    currency: "USD",
-    date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-    status: "completed",
-    participants: [
-      { id: "1", name: "You" },
-      { id: "2", name: "Sarah" },
-      { id: "3", name: "Mike" },
-    ],
-    role: "participant",
-  },
-  {
-    id: "s-1002",
-    title: "Grocery Run",
-    totalAmount: 120.5,
-    currency: "USD",
-    date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
-    status: "active",
-    participants: [
-      { id: "1", name: "You" },
-      { id: "4", name: "Jess" },
-    ],
-    role: "creator",
-  },
-  {
-    id: "s-1003",
-    title: "Weekend Road Trip",
-    totalAmount: 980,
-    currency: "USD",
-    date: new Date(Date.now() - 40 * 24 * 60 * 60 * 1000).toISOString(),
-    status: "cancelled",
-    participants: [
-      { id: "1", name: "You" },
-      { id: "5", name: "Adebayo" },
-      { id: "6", name: "Lara" },
-    ],
-    role: "participant",
-  },
-  {
-    id: "s-1004",
-    title: "Team Lunch",
-    totalAmount: 245,
-    currency: "USD",
-    date: new Date(Date.now() - 12 * 24 * 60 * 60 * 1000).toISOString(),
-    status: "completed",
-    participants: [
-      { id: "1", name: "You" },
-      { id: "7", name: "Ola" },
-      { id: "8", name: "Ife" },
-    ],
-    role: "creator",
-  },
-  {
-    id: "s-1005",
-    title: "Concert Tickets",
-    totalAmount: 360,
-    currency: "USD",
-    date: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString(),
-    status: "active",
-    participants: [
-      { id: "1", name: "You" },
-      { id: "9", name: "Kemi" },
-    ],
-    role: "participant",
-  },
-];
+import {
+  getSplitHistoryRepository,
+  type HistorySplit,
+  type SplitStatus,
+} from "../services/splitHistoryRepository";
+import { exportHistoryCsv } from "../utils/exportHistoryCsv";
 
 function useSplitHistory() {
   const [splits, setSplits] = useState<HistorySplit[]>([]);
   const [loading, setLoading] = useState(true);
   const [error] = useState<string | null>(null);
+  const [source, setSource] = useState<"api" | "fixture">("api");
 
   useEffect(() => {
     let mounted = true;
     async function fetchData() {
       setLoading(true);
       try {
-        // Try backend; fall back to mock on failure
-        const res = await apiClient.get<HistorySplit[]>("/splits/history");
-        if (mounted) setSplits(res.data);
+        const result = await getSplitHistoryRepository().list();
+        if (mounted) {
+          setSplits(result.data);
+          setSource(result.source);
+        }
       } catch {
-        if (mounted) setSplits(MOCK_SPLITS);
+        if (mounted) setSource("fixture");
       } finally {
         if (mounted) setLoading(false);
       }
@@ -123,51 +42,12 @@ function useSplitHistory() {
     };
   }, []);
 
-  return { splits, loading, error };
-}
-
-function exportToCSV(rows: HistorySplit[], filename = "split-history.csv") {
-  const header = [
-    "id",
-    "title",
-    "date",
-    "status",
-    "amount",
-    "currency",
-    "role",
-    "participants",
-  ];
-  const csvRows = rows.map((s) =>
-    [
-      s.id,
-      escapeCsv(s.title),
-      new Date(s.date).toISOString(),
-      s.status,
-      s.totalAmount.toFixed(2),
-      s.currency,
-      s.role,
-      s.participants.map((p) => p.name).join("; "),
-    ].join(","),
-  );
-  const csv = [header.join(","), ...csvRows].join("\n");
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
-function escapeCsv(value: string): string {
-  if (value.includes(",") || value.includes("\n") || value.includes('"')) {
-    return `"${value.replace(/\"/g, '""')}"`;
-  }
-  return value;
+  return { splits, loading, error, source };
 }
 
 export default function SplitHistoryPage() {
-  const { splits, loading } = useSplitHistory();
+  const { t } = useTranslation();
+  const { splits, loading, source } = useSplitHistory();
   const [filters, setFilters] = useState<FiltersState>({
     statuses: new Set<SplitStatus>(["active", "completed", "cancelled"]),
     role: "all",
@@ -186,11 +66,20 @@ export default function SplitHistoryPage() {
     const search = filters.search.trim().toLowerCase();
     const bySearch = !search
       ? byRole
-      : byRole.filter(
-          (s) =>
-            s.title.toLowerCase().includes(search) ||
-            s.participants.some((p) => p.name.toLowerCase().includes(search)),
-        );
+      : byRole.filter((s) => {
+          const selfMatch = (p: (typeof s.participants)[0]) => {
+            if (p.name === "You") {
+              return (
+                t("common.you").toLowerCase().includes(search) ||
+                p.name.toLowerCase().includes(search)
+              );
+            }
+            return p.name.toLowerCase().includes(search);
+          };
+          return (
+            s.title.toLowerCase().includes(search) || s.participants.some(selfMatch)
+          );
+        });
 
     const sorted = [...bySearch].sort((a, b) => {
       switch (filters.sort) {
@@ -210,7 +99,7 @@ export default function SplitHistoryPage() {
     });
 
     return sorted;
-  }, [splits, filters]);
+  }, [splits, filters, t]);
 
   useEffect(() => {
     setPage(1);
@@ -236,14 +125,19 @@ export default function SplitHistoryPage() {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 pt-6 pb-20 px-4">
       <div className="mx-auto max-w-6xl">
         <div className="flex items-center justify-between mb-4">
-          <h1 className="text-2xl font-bold">Split History</h1>
-          <button
-            type="button"
-            onClick={() => exportToCSV(filtered)}
-            className="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium"
-          >
-            Export CSV
-          </button>
+          <h1 className="text-2xl font-bold">{t("history.title")}</h1>
+          <div className="flex items-center gap-2">
+            <span className="rounded-md border border-gray-300 px-2 py-1 text-xs text-gray-600 dark:border-gray-700 dark:text-gray-300">
+              {source === "api" ? "Live data" : "Fixture data"}
+            </span>
+            <button
+              type="button"
+              onClick={() => exportHistoryCsv(filtered)}
+              className="px-4 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium"
+            >
+              {t("history.exportCsv")}
+            </button>
+          </div>
         </div>
 
         <HistoryFilters value={filters} onChange={setFilters} />
@@ -255,7 +149,7 @@ export default function SplitHistoryPage() {
             ) : pageItems.length === 0 ? (
               <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-8 text-center">
                 <p className="text-gray-600 dark:text-gray-300">
-                  No splits found
+                  {t("history.noSplits")}
                 </p>
               </div>
             ) : (
@@ -265,7 +159,10 @@ export default function SplitHistoryPage() {
             {/* Pagination */}
             <div className="mt-6 flex items-center justify-between">
               <p className="text-sm text-gray-600 dark:text-gray-300">
-                Showing {pageItems.length} of {filtered.length}
+                {t("history.showing", {
+                  count: pageItems.length,
+                  total: filtered.length,
+                })}
               </p>
               <div className="flex gap-2">
                 <button
@@ -273,17 +170,17 @@ export default function SplitHistoryPage() {
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                   disabled={page === 1}
                 >
-                  Prev
+                  {t("history.prev")}
                 </button>
                 <span className="text-sm text-gray-700 dark:text-gray-200">
-                  Page {page} / {totalPages}
+                  {t("history.pageN", { current: page, total: totalPages })}
                 </span>
                 <button
                   className="px-3 py-1 rounded-md border border-gray-300 dark:border-gray-700 text-sm disabled:opacity-50"
                   onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                   disabled={page === totalPages}
                 >
-                  Next
+                  {t("history.next")}
                 </button>
               </div>
             </div>

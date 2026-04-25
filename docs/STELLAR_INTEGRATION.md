@@ -175,22 +175,39 @@ import { useWallet } from '../hooks/use-wallet'
 
 function MyComponent() {
   const {
-    publicKey,              // Connected wallet address
-    isConnected,            // Boolean connection status
-    isConnecting,           // Loading state
-    hasFreighter,           // Extension installed?
-    error,                  // Error message
-    walletNetworkPassphrase,// Current network
-    isOnAllowedNetwork,     // Valid network?
-    connect,                // Connect function
-    disconnect,             // Disconnect function
-    signTransaction,        // Sign transaction function
+    publicKey,                // Connected wallet address
+    activeUserId,             // User ID considering session state
+    isConnected,              // Boolean connection status
+    isConnecting,             // Connecting state
+    isRefreshing,             // Refreshing state
+    hasFreighter,             // Extension installed?
+    error,                    // Error message
+    networkPassphrase,        // Soroban target network passphrase
+    requiredNetworkPassphrase,// Expected network passphrase
+    requiredNetworkLabel,     // Expected network label (e.g. Testnet)
+    rpcUrl,                   // RPC URL
+    horizonUrl,               // Horizon URL
+    walletNetworkPassphrase,  // Current Freighter network passphrase
+    walletNetworkLabel,       // Current Freighter network label
+    isOnAllowedNetwork,       // Valid network?
+    canTransact,              // publicKey && isOnAllowedNetwork
+    lastConnectedAccount,     // Session persistent account
+    connect,                  // Connect function
+    disconnect,               // Disconnect function
+    refresh,                  // Re-fetch state and network (used for tab sync / recovery)
+    clearError,               // Clear current error
+    signTransaction,          // Sign transaction function (checks network match first)
   } = useWallet()
 
   return (
-    <button onClick={connect}>
-      {isConnected ? publicKey : 'Connect Wallet'}
-    </button>
+    <div>
+      <button onClick={connect} disabled={isConnecting || isRefreshing}>
+        {isConnected ? publicKey : 'Connect Wallet'}
+      </button>
+      {!canTransact && isConnected && (
+        <p>Please switch Freighter to {requiredNetworkLabel}. Currently on {walletNetworkLabel}.</p>
+      )}
+    </div>
   )
 }
 ```
@@ -340,6 +357,8 @@ const uri = buildStellarPaymentURI({
 
 // Result: web+stellar:pay?destination=GABCD...&amount=10.5&asset_code=USDC...
 ```
+
+For more details on how these URIs are processed, including cross-device QR code scanning and checkout state handling, see the [Payment URI and Checkout Flow Guide](./payment-uri-flow.md).
 
 ---
 

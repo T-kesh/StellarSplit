@@ -1,12 +1,14 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
+import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
+import { DataSource, EntityManager, Repository } from 'typeorm';
 import { Split } from '../../entities/split.entity';
 import { Item } from '../../entities/item.entity';
 import { Participant } from '../../entities/participant.entity';
 import { Receipt } from '../../receipts/entities/receipt.entity';
 import { OcrService } from '../../ocr/ocr.service';
 import { SplitCalculationService } from './split-calculation.service';
+import { FraudDetectionService } from '../../fraud-detection/fraud-detection.service';
+import { AnalyzeSplitRequestDto } from '../../fraud-detection/dto/analyze-split.dto';
 import { 
   CreateSplitDto, 
   UpdateSplitDto, 
@@ -17,6 +19,8 @@ import {
 
 @Injectable()
 export class SplitsService {
+  private readonly logger = new Logger(SplitsService.name);
+
   constructor(
     @InjectRepository(Split)
     private readonly splitRepository: Repository<Split>,
@@ -28,13 +32,30 @@ export class SplitsService {
     private readonly receiptRepository: Repository<Receipt>,
     private readonly ocrService: OcrService,
     private readonly splitCalculationService: SplitCalculationService,
+    @InjectDataSource()
+    private readonly dataSource: DataSource,
+    private readonly fraudDetectionService: FraudDetectionService,
   ) {}
 
   /**
    * Create a new split from scratch
    */
-  async createSplit(createSplitDto: CreateSplitDto): Promise<Split> {
-    const split = this.splitRepository.create({
+  async createSplit(
+    createSplitDto: CreateSplitDto,
+    manager?: EntityManager,
+  ): Promise<Split> {
+    // If no transaction manager is provided, run everything atomically.
+    if (!manager) {
+      return this.dataSource.transaction(async (txManager) => {
+        return this.createSplit(createSplitDto, txManager);
+      });
+    }
+
+    const splitRepository = manager.getRepository(Split);
+    const itemRepository = manager.getRepository(Item);
+    const participantRepository = manager.getRepository(Participant);
+
+    const split = splitRepository.create({
       totalAmount: createSplitDto.totalAmount,
       description: createSplitDto.description,
       creatorWalletAddress: createSplitDto.creatorWalletAddress,
@@ -42,19 +63,56 @@ export class SplitsService {
       dueDate: createSplitDto.dueDate,
     });
 
-    const savedSplit = await this.splitRepository.save(split);
+    const savedSplit = await splitRepository.save(split);
 
     // Create participants
     if (createSplitDto.participants) {
-      await this.createParticipants(savedSplit.id, createSplitDto.participants);
+      await this.createParticipants(
+        savedSplit.id,
+        createSplitDto.participants,
+        participantRepository,
+      );
     }
 
     // Create items if provided
     if (createSplitDto.items) {
-      await this.createItems(savedSplit.id, createSplitDto.items);
+      await this.createItems(savedSplit.id, createSplitDto.items, itemRepository);
     }
 
-    return this.getSplitById(savedSplit.id);
+    const createdSplit = await splitRepository.findOne({
+      where: { id: savedSplit.id },
+      relations: ['items', 'participants', 'category'],
+    });
+
+    if (!createdSplit) {
+      throw new NotFoundException(`Split ${savedSplit.id} not found`);
+    }
+
+    // Perform fraud detection check
+    try {
+      const fraudRequest: AnalyzeSplitRequestDto = {
+        split_data: {
+          split_id: savedSplit.id,
+          creator_id: createSplitDto.creatorWalletAddress,
+          total_amount: createSplitDto.totalAmount,
+          participant_count: createSplitDto.participants?.length || 0,
+          description: createSplitDto.description,
+          preferred_currency: createSplitDto.preferredCurrency || 'XLM',
+          creator_wallet_address: createSplitDto.creatorWalletAddress,
+          created_at: savedSplit.createdAt,
+        },
+      };
+      const fraudResult = await this.fraudDetectionService.checkSplit(fraudRequest);
+      if (!fraudResult.allowed) {
+        // Log the block, but still allow the split for now (or throw error)
+        this.logger.warn(`Split ${savedSplit.id} blocked due to fraud risk: ${fraudResult.riskLevel}`);
+      }
+    } catch (error) {
+      // Log but don't fail the split creation
+      this.logger.error(`Fraud detection failed for split ${savedSplit.id}:`, error);
+    }
+
+    return createdSplit;
   }
 
   /**
@@ -216,9 +274,13 @@ export class SplitsService {
   /**
    * Helper method to create participants
    */
-  private async createParticipants(splitId: string, participants: any[]): Promise<void> {
+  private async createParticipants(
+    splitId: string,
+    participants: any[],
+    participantRepo: Repository<Participant> = this.participantRepository,
+  ): Promise<void> {
     const participantEntities = participants.map(p => 
-      this.participantRepository.create({
+      participantRepo.create({
         splitId,
         userId: p.userId,
         amountOwed: p.amountOwed || 0,
@@ -226,15 +288,19 @@ export class SplitsService {
       })
     );
 
-    await this.participantRepository.save(participantEntities);
+    await participantRepo.save(participantEntities);
   }
 
   /**
    * Helper method to create items
    */
-  private async createItems(splitId: string, items: any[]): Promise<void> {
+  private async createItems(
+    splitId: string,
+    items: any[],
+    itemRepo: Repository<Item> = this.itemRepository,
+  ): Promise<void> {
     const itemEntities = items.map(item => 
-      this.itemRepository.create({
+      itemRepo.create({
         splitId,
         name: item.name,
         quantity: item.quantity,
@@ -245,6 +311,6 @@ export class SplitsService {
       })
     );
 
-    await this.itemRepository.save(itemEntities);
+    await itemRepo.save(itemEntities);
   }
 }

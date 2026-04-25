@@ -3,16 +3,17 @@ import { CurrencyRateService } from './currency-rate.service';
 
 @Injectable()
 export class ConversionService {
-  constructor(private rateService: CurrencyRateService) { }
+  constructor(private readonly rateService: CurrencyRateService) {}
 
   async convert(amount: number, base: string, target: string) {
-    const rate = await this.rateService.getRate(base, target);
+    const quote = await this.rateService.getRateQuote(base, target);
     return {
       base,
       target,
-      rate,
+      rate: quote.rate,
       amount,
-      converted: amount * rate,
+      converted: Number((amount * quote.rate).toFixed(8)),
+      metadata: quote.metadata,
     };
   }
 }

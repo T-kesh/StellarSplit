@@ -73,6 +73,10 @@ export const Permissions = {
   CAN_READ_DISPUTE: { resource: "dispute" as const, action: "read" },
   CAN_RESOLVE_DISPUTE: { resource: "dispute" as const, action: "resolve" },
   CAN_REJECT_DISPUTE: { resource: "dispute" as const, action: "reject" },
+  CAN_READ_FRAUD_ALERTS: {
+    resource: "split" as const,
+    action: "read_fraud_alerts",
+  },
 
   // Group permissions
   CAN_READ_GROUP: { resource: "group" as const, action: "read" },

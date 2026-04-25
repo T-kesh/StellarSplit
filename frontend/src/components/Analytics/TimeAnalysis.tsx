@@ -9,7 +9,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import type { TimeDistribution } from "../../types/analytics";
-import { useTheme } from "../ThemeContex";
+import { useTheme } from "../ThemeContext";
 
 interface TimeAnalysisProps {
   data: TimeDistribution[];

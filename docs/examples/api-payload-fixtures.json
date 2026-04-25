@@ -1,0 +1,96 @@
+{
+  "splits": {
+    "create": {
+      "request": {
+        "totalAmount": 450.00,
+        "description": "Dinner at Nobu",
+        "creatorWalletAddress": "GCREATORWALLETADDRESS",
+        "preferredCurrency": "USD",
+        "dueDate": "2026-04-01T18:00:00.000Z",
+        "participants": [
+          {
+            "userId": "c65916df-0e49-4cfe-a3e8-a96c7da7c34a",
+            "amountOwed": 225.00,
+            "walletAddress": "GABC1234WALLETADDRESS"
+          }
+        ]
+      },
+      "response": {
+        "id": "91d71dcb-59f8-40c6-8e06-e3e408069e62",
+        "totalAmount": 450.00,
+        "amountPaid": 0,
+        "status": "active",
+        "isFrozen": false,
+        "description": "Dinner at Nobu",
+        "preferredCurrency": "USD",
+        "creatorWalletAddress": "GCREATORWALLETADDRESS",
+        "dueDate": "2026-04-01T18:00:00.000Z",
+        "createdAt": "2026-03-20T10:00:00.000Z",
+        "updatedAt": "2026-03-20T10:00:00.000Z",
+        "items": [],
+        "participants": [
+          {
+            "id": "6f0f6b90-07dc-42b7-bfca-a37b3db6e4c2",
+            "splitId": "91d71dcb-59f8-40c6-8e06-e3e408069e62",
+            "userId": "c65916df-0e49-4cfe-a3e8-a96c7da7c34a",
+            "amountOwed": 225.00,
+            "amountPaid": 0,
+            "status": "pending",
+            "walletAddress": "GABC1234WALLETADDRESS",
+            "createdAt": "2026-03-20T10:00:00.000Z",
+            "updatedAt": "2026-03-20T10:00:00.000Z"
+          }
+        ]
+      }
+    },
+    "finalize_draft": {
+      "request": {
+        "splitType": "equal",
+        "participantIds": ["c65916df-0e49-4cfe-a3e8-a96c7da7c34a", "d76027ef-60f9-50d7-9f07-f4f509070f73"],
+        "tax": 15.00,
+        "tip": 45.00,
+        "tipDistribution": "proportional"
+      }
+    }
+  },
+  "items": {
+    "create": {
+      "request": {
+        "name": "Sashimi Platter",
+        "quantity": 1,
+        "unitPrice": 120.00,
+        "totalPrice": 120.00,
+        "category": "food",
+        "assignedToIds": ["c65916df-0e49-4cfe-a3e8-a96c7da7c34a"]
+      }
+    }
+  },
+  "payments": {
+    "submit": {
+      "request": {
+        "splitId": "91d71dcb-59f8-40c6-8e06-e3e408069e62",
+        "participantId": "6f0f6b90-07dc-42b7-bfca-a37b3db6e4c2",
+        "stellarTxHash": "a3c5f8b2e1d4...",
+        "externalReference": "ORDER-12345"
+      }
+    }
+  },
+  "export": {
+    "create": {
+      "request": {
+        "format": "CSV",
+        "reportType": "monthly_summary",
+        "filters": {
+          "startDate": "2024-01-01",
+          "endDate": "2024-12-31",
+          "categories": ["food", "transportation"],
+          "currency": "XLM"
+        },
+        "settings": {
+          "includeTaxFields": true,
+          "includeReceipts": true
+        }
+      }
+    }
+  }
+}

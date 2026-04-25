@@ -7,6 +7,7 @@ import {
 import { UnauthorizedException } from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
 import { AuthorizationService } from "../services/authorization.service";
+import { ReceiptPolicyService } from "../../receipts/receipt-policy.service";
 import {
   CHECK_PERMISSIONS_KEY,
   Permission,
@@ -17,6 +18,7 @@ export class AuthorizationGuard implements CanActivate {
   constructor(
     private readonly reflector: Reflector,
     private readonly authorizationService: AuthorizationService,
+    private readonly receiptPolicyService: ReceiptPolicyService,
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -162,8 +164,8 @@ export class AuthorizationGuard implements CanActivate {
     const receiptId = params.receiptId || params.id || body.receiptId;
     const splitId = params.splitId || body.splitId;
 
-    if (action === "create" && splitId) {
-      return this.authorizationService.canAccessSplit(userId, splitId);
+    if (action === "create") {
+      return this.receiptPolicyService.canCreateReceipt(userId, splitId);
     }
 
     if (!receiptId) {
@@ -173,7 +175,7 @@ export class AuthorizationGuard implements CanActivate {
     switch (action) {
       case "read":
       case "delete":
-        return this.authorizationService.canAccessReceipt(userId, receiptId);
+        return this.receiptPolicyService.canAccessReceipt(userId, receiptId);
       default:
         return false;
     }

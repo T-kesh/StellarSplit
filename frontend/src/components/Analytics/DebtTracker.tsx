@@ -9,7 +9,7 @@ import {
   Cell,
 } from "recharts";
 import type { DebtBalance } from "../../types/analytics";
-import { useTheme } from "../ThemeContex";
+import { useTheme } from "../ThemeContext";
 
 interface DebtTrackerProps {
   data: DebtBalance[];

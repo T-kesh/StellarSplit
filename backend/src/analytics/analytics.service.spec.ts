@@ -103,9 +103,7 @@ describe("AnalyticsService", () => {
       params: {},
     });
     expect(createdViaService).toBeDefined();
-    const savedViaService = await (service as any).reportsRepository.save(
-      createdViaService as any,
-    );
+    await (service as any).reportsRepository.save(createdViaService as any);
     // savedViaService might be undefined depending on the mocked repo implementation
 
     const res = await service.enqueueExport(dto);

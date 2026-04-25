@@ -2,12 +2,15 @@ import { Test, TestingModule } from "@nestjs/testing";
 import { BatchController } from "./batch.controller";
 import { BatchService } from "./batch.service";
 import { AuthorizationService } from "../auth/services/authorization.service";
+import { AuthorizationGuard } from "../auth/guards/authorization.guard";
+import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import {
   CreateBatchSplitsDto,
   CreateBatchPaymentsDto,
 } from "./dto/create-batch.dto";
 import { BatchStatusDto } from "./dto/batch-status.dto";
 import { BatchJobStatus, BatchJobType } from "./entities/batch-job.entity";
+import { ReceiptPolicyService } from "../receipts/receipt-policy.service";
 
 describe("BatchController", () => {
   let controller: BatchController;
@@ -47,8 +50,19 @@ describe("BatchController", () => {
             filterAccessibleSplits: jest.fn().mockResolvedValue([]),
           },
         },
+        {
+          provide: ReceiptPolicyService,
+          useValue: {
+            canCreateReceipt: jest.fn().mockResolvedValue(true),
+            canAccessReceipt: jest.fn().mockResolvedValue(true),
+            canDeleteReceipt: jest.fn().mockResolvedValue(true),
+          },
+        },
       ],
-    }).compile();
+    })
+      .overrideGuard(JwtAuthGuard).useValue({ canActivate: () => true })
+      .overrideGuard(AuthorizationGuard).useValue({ canActivate: () => true })
+      .compile();
 
     controller = module.get<BatchController>(BatchController);
     service = module.get<BatchService>(BatchService);

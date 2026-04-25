@@ -38,7 +38,7 @@ export async function cleanupOldReportsHelper(
         } else {
           try {
             await require("fs").promises.unlink(filePath);
-          } catch (_) {
+          } catch {
             // ignore
           }
         }

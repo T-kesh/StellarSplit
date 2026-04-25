@@ -1,9 +1,30 @@
-import { Server } from "stellar-sdk";
+import axios from "axios";
 
-const server = new Server("https://horizon-testnet.stellar.org");
+interface HorizonBalance {
+  asset_code?: string;
+  asset_type: string;
+  balance: string;
+}
 
-export async function verifyBalance(accountId: string, asset: string, expected: number): Promise<boolean> {
-  const account = await server.loadAccount(accountId);
-  const balance = account.balances.find(b => b.asset_code === asset);
+interface HorizonAccount {
+  balances: HorizonBalance[];
+}
+
+const HORIZON_URL = "https://horizon-testnet.stellar.org";
+
+export async function verifyBalance(
+  accountId: string,
+  asset: string,
+  expected: number,
+): Promise<boolean> {
+  const { data } = await axios.get<HorizonAccount>(
+    `${HORIZON_URL}/accounts/${accountId}`,
+  );
+  const balance = data.balances.find((entry) =>
+    asset === "XLM"
+      ? entry.asset_type === "native"
+      : entry.asset_code === asset,
+  );
+
   return balance ? Number(balance.balance) >= expected : false;
 }

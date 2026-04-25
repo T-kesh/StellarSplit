@@ -3,7 +3,7 @@ import { SpendingTrendsDto } from "./dto/spending-trends.dto";
 import { ExportRequestDto } from "./dto/export.dto";
 import { AnalyticsService } from "./analytics.service";
 
-@Controller("api/analytics")
+@Controller("analytics")
 export class AnalyticsController {
   constructor(private readonly analyticsService: AnalyticsService) {}
 
