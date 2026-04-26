@@ -1,4 +1,5 @@
 import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
+import { PaymentRequestContext } from './payment-request-context';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Payment } from '../entities/payment.entity';
@@ -6,6 +7,7 @@ import { Participant } from '../entities/participant.entity';
 import { Split } from '../entities/split.entity';
 import { StellarService } from '../stellar/stellar.service';
 import { PaymentProcessorService } from './payment-processor.service';
+import { FraudDetectionService, AnalyzePaymentRequestDto } from '../fraud-detection/fraud-detection.service';
 import { PaymentGateway } from '../websocket/payment.gateway';
 
 @Injectable()
@@ -19,18 +21,24 @@ export class PaymentsService {
     private readonly stellarService: StellarService,
     private readonly paymentProcessorService: PaymentProcessorService,
     private readonly paymentGateway: PaymentGateway,
+    private readonly fraudDetectionService: FraudDetectionService,
   ) { }
 
   /**
    * Submit a payment with Stellar transaction hash
    */
-  async submitPayment(splitId: string, participantId: string, stellarTxHash: string, idempotencyKey?: string, externalReference?: string) {
+  async submitPayment(
+    splitId: string,
+    participantId: string,
+    stellarTxHash: string,
+    context: PaymentRequestContext,
+  ) {
     return await this.paymentProcessorService.processPaymentSubmission({
       splitId,
       participantId,
       txHash: stellarTxHash,
-      idempotencyKey,
-      externalReference,
+      idempotencyKey: context.idempotencyKey,
+      externalReference: context.externalReference,
     });
   }
 

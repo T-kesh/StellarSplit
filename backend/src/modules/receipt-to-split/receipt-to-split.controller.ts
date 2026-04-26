@@ -17,7 +17,7 @@ import { Split } from '../../entities/split.entity';
 import { Receipt } from '../../receipts/entities/receipt.entity';
 
 @ApiTags('receipt-to-split')
-@Controller('api/receipt-to-split')
+@Controller('receipt-to-split')
 export class ReceiptToSplitController {
   private readonly logger = new Logger(ReceiptToSplitController.name);
 

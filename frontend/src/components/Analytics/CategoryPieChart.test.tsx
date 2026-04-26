@@ -3,6 +3,15 @@ import { describe, it, expect, vi } from 'vitest';
 import { CategoryPieChart } from './CategoryPieChart';
 import type { CategoryBreakdown } from '../../types/analytics';
 
+vi.mock('../ThemeContext', () => ({
+    useTheme: () => ({
+        theme: 'light',
+        resolvedTheme: 'light',
+        setTheme: vi.fn(),
+        toggleTheme: vi.fn(),
+    }),
+}));
+
 vi.mock('recharts', async () => {
     const actual = await vi.importActual('recharts');
     return {

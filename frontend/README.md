@@ -1,73 +1,66 @@
-# React + TypeScript + Vite
+# StellarSplit — Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+This is the React + Vite frontend for StellarSplit — a smart bill splitting
+app with wallet integration. Follow this guide to get your local UI running.
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Prerequisites
 
-## React Compiler
+Make sure you have these installed before starting:
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+| Tool    | Minimum Version |
+| ------- | --------------- |
+| Node.js | v18+            |
+| npm     | v9+             |
 
-## Expanding the ESLint configuration
+---
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## 1. Clone and Install
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+If you have not already cloned the repo:
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+git clone https://github.com/Dataguru-tech/StellarSplit.git
+cd StellarSplit/frontend
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Install dependencies:
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm install
 ```
+
+---
+
+## 2. Environment Setup
+
+Copy the example env file and fill in your values:
+
+```bash
+cp .env.example .env
+```
+
+### Environment Variable Reference
+
+| Variable                 | Description              | Example                        |
+| ------------------------ | ------------------------ | ------------------------------ |
+| `VITE_API_BASE_URL`      | Backend API base URL     | `http://localhost:3000/api/v1` |
+| `VITE_APP_NAME`          | App display name         | `StellarSplit`                 |
+| `VITE_WALLET_CONNECT_ID` | WalletConnect project ID | `<your-project-id>`            |
+| `VITE_ENVIRONMENT`       | Runtime environment      | `development`                  |
+
+> ⚠️ All frontend env variables must be prefixed with `VITE_` to be
+> accessible in the browser. Never commit your `.env` file.
+
+---
+
+## 3. Running the App
+
+### Development server (with hot reload)
+
+```bash
+npm run dev
+```
+
+The app will be available at:

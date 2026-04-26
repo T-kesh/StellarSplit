@@ -7,10 +7,12 @@ import { Reflector } from "@nestjs/core";
 import { Test, TestingModule } from "@nestjs/testing";
 import { AuthorizationGuard } from "../guards/authorization.guard";
 import { AuthorizationService } from "../services/authorization.service";
+import { ReceiptPolicyService } from "../../receipts/receipt-policy.service";
 
 describe("Authorization Integration Tests", () => {
   let authorizationGuard: AuthorizationGuard;
   let authorizationService: AuthorizationService;
+  let receiptPolicyService: ReceiptPolicyService;
   let reflector: Reflector;
 
   const mockUser1 = { id: "user-1", walletAddress: "wallet-1" };
@@ -22,7 +24,19 @@ describe("Authorization Integration Tests", () => {
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
-      providers: [AuthorizationGuard, AuthorizationService, Reflector],
+      providers: [
+        AuthorizationGuard,
+        AuthorizationService,
+        Reflector,
+        {
+          provide: ReceiptPolicyService,
+          useValue: {
+            canCreateReceipt: jest.fn(),
+            canAccessReceipt: jest.fn(),
+            canDeleteReceipt: jest.fn(),
+          },
+        },
+      ],
     })
       .overrideProvider(AuthorizationService)
       .useValue({
@@ -44,6 +58,7 @@ describe("Authorization Integration Tests", () => {
     authorizationGuard = module.get<AuthorizationGuard>(AuthorizationGuard);
     authorizationService =
       module.get<AuthorizationService>(AuthorizationService);
+    receiptPolicyService = module.get<ReceiptPolicyService>(ReceiptPolicyService);
     reflector = module.get<Reflector>(Reflector);
   });
 
@@ -91,6 +106,39 @@ describe("Authorization Integration Tests", () => {
       jest.spyOn(reflector, "getAllAndOverride").mockReturnValue(permissions);
       jest
         .spyOn(authorizationService, "canAccessReceipt")
+        .mockResolvedValue(false);
+
+      await expect(authorizationGuard.canActivate(mockContext)).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+
+    it("should allow standalone receipt uploads for authenticated users", async () => {
+      const mockContext = createMockContext(mockUser1, {});
+      const permissions = [{ resource: "receipt" as const, action: "create" }];
+
+      jest.spyOn(reflector, "getAllAndOverride").mockReturnValue(permissions);
+      jest
+        .spyOn(receiptPolicyService, "canCreateReceipt")
+        .mockResolvedValue(true);
+
+      const result = await authorizationGuard.canActivate(mockContext);
+      expect(result).toBe(true);
+      expect(receiptPolicyService.canCreateReceipt).toHaveBeenCalledWith(
+        mockUser1.id,
+        undefined,
+      );
+    });
+
+    it("should enforce split-specific receipt upload permissions", async () => {
+      const mockContext = createMockContext(mockUser1, {
+        splitId: mockSplitId,
+      });
+      const permissions = [{ resource: "receipt" as const, action: "create" }];
+
+      jest.spyOn(reflector, "getAllAndOverride").mockReturnValue(permissions);
+      jest
+        .spyOn(receiptPolicyService, "canCreateReceipt")
         .mockResolvedValue(false);
 
       await expect(authorizationGuard.canActivate(mockContext)).rejects.toThrow(

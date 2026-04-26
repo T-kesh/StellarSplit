@@ -1,17 +1,28 @@
 # StellarSplit Smart Contract Developer Guide
 
-This guide explains how the Soroban escrow contract works, how to deploy it, and how to interact with it from the backend.
+This guide explains how the Soroban smart contracts work, how to deploy them, and how to interact with them from the backend.
+
+> ⚠️ **IMPORTANT: CONTRACT STATUS**  
+> Several contracts (including `split-escrow`, `dispute-resolution`, and `multi-sig-splits`) are currently **BROKEN** and undergoing maintenance. They cannot be deployed or integrated at this time.
+> For a full breakdown of which contracts are safe to use, please review the [Contracts Status Matrix](./contracts-status.md) before writing any integration code.
 
 ## Architecture Overview
 
-The `SplitEscrow` contract manages the lifecycle of shared bill payments. It acts as a trusted third party that holds funds until all participants have contributed their shares.
+StellarSplit relies on a modular suite of Soroban smart contracts. Instead of a single monolithic contract, functionalities are split into targeted workspaces:
 
-### Escrow Lifecycle
+### Production-Ready Modules
+These modules are fully tested, compile successfully, and are ready for integration:
+- **`split-template`**: Manages reusable split templates with versioning.
+- **`staking`**: Handles staking, governance delegation, and reward distribution.
+- **`flash-loan`**: A flash loan protocol for advanced financial operations.
+- **`path-payment`**: Automatic currency conversion via Stellar path payments.
+- **`achievement-badges`**: Manages NFT achievement badges.
 
-1.  **Creation**: A creator initiates a split with a description, total amount, and participant list.
-2.  **Collection**: Participants deposit tokens into the contract.
-3.  **Completion/Release**: Once fully funded, the contract automatically (or manually) releases funds to the creator.
-4.  **Cancellation**: The creator can cancel a pending split, allowing participants to claim refunds.
+### Broken/Experimental Modules
+These modules currently have compilation errors or structural issues and **should not be integrated**:
+- **`split-escrow`**: Trustless bill split escrow (DO NOT USE).
+- **`dispute-resolution`**: On-chain dispute handling (DO NOT USE).
+- **`multi-sig-splits`**: Multi-signature coordination (DO NOT USE).
 
 ---
 
@@ -37,64 +48,41 @@ stellar keys generate dev --network testnet
 
 ## Building and Testing
 
-### Build
+> Note: Because some contracts are broken, you should rely on the CI scripts or specify the package explicitly to avoid workspace-wide errors.
+
+### Build (Healthy Contracts Only)
 ```bash
-cargo build --target wasm32-unknown-unknown --release
+# Run from the /contracts directory using the CI script
+bash scripts/ci-contracts.sh build
 ```
 
-### Run Tests
+### Run Tests (Healthy Contracts Only)
 ```bash
-cargo test
+# Test a specific package
+cargo test -p split-template
+
+# Or test all healthy contracts via CI script
+bash scripts/ci-contracts.sh test
 ```
 
 ---
 
 ## Deployment
 
+Deploying a production-ready contract (e.g., `split-template`):
+
 ```bash
 # Deploy to testnet
 stellar contract deploy \
-  --wasm target/wasm32-unknown-unknown/release/split_escrow.wasm \
+  --wasm target/wasm32-unknown-unknown/release/split_template.wasm \
   --source dev \
   --network testnet
 ```
 
 ---
 
-## Contract Interface
-
-### Methods
-
-| Function | Parameters | Return Type | Description |
-| :--- | :--- | :--- | :--- |
-| `initialize` | `admin: Address`, `token: Address` | `void` | Sets the admin and token address. |
-| `create_split` | `creator: Address`, `description: String`, `total_amount: i128`, ... | `u64` | Creates a new split record. |
-| `deposit` | `split_id: u64`, `participant: Address`, `amount: i128` | `void` | Deposits funds for a participant. |
-| `release_funds`| `split_id: u64` | `Result<(), Error>` | Releases fully collected funds. |
-| `release_partial`| `split_id: u64` | `Result<i128, Error>` | Releases available funds. |
-| `cancel_split` | `split_id: u64` | `void` | Cancels split (Creator only). |
-| `get_split` | `split_id: u64` | `Split` | Returns split details. |
-
-### Events (Topics)
-
-- `init`: Emitted on contract initialization.
-- `created`: Emitted when a new split is created.
-- `deposit`: Emitted on every participant deposit.
-- `released`: Emitted when funds are released.
-- `completed`: Emitted when split becomes fully funded.
-- `cancel`: Emitted when split is cancelled.
-
-### Error Codes
-
-- `1`: `AlreadyInitialized`
-- `2`: `NotInitialized`
-- `3`: `EscrowNotFound`
-- `6`: `InvalidAmount`
-- `8`: `Unauthorized`
-- `9`: `ParticipantNotFound`
-
----
-
 ## Backend Integration
 
-The backend interacts with the contract using the `stellar-sdk`. Ensure you track the `split_id` returned during creation and listen for the `deposit` event to update local database states.
+The backend interacts with the contracts using the `@stellar/stellar-sdk` and `@stellar/freighter-api`. Ensure you track the contract IDs returned during deployment and listen for contract events (like `deposit`, `released`, or `template_created`) using Horizon to update local database states.
+
+**Reminder**: Do not write backend integration code targeting the `split-escrow` contract until it is marked as `Production` in the [Contracts Status Matrix](./contracts-status.md).

@@ -1,4 +1,6 @@
 import { Test, TestingModule } from "@nestjs/testing";
+import { AuthorizationGuard } from "../auth/guards/authorization.guard";
+import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { RecurringSplitsController } from "./recurring-splits.controller";
 import {
   RecurringSplitsService,
@@ -9,6 +11,7 @@ import { RecurringSplitsScheduler } from "./recurring-splits.scheduler";
 import { RecurringSplit, RecurrenceFrequency } from "./recurring-split.entity";
 import { BadRequestException, NotFoundException } from "@nestjs/common";
 import { AuthorizationService } from "../auth/services/authorization.service";
+import { ReceiptPolicyService } from "../receipts/receipt-policy.service";
 
 describe("RecurringSplitsController", () => {
   let controller: RecurringSplitsController;
@@ -61,8 +64,19 @@ describe("RecurringSplitsController", () => {
             filterAccessibleSplits: jest.fn().mockResolvedValue([]),
           },
         },
+        {
+          provide: ReceiptPolicyService,
+          useValue: {
+            canCreateReceipt: jest.fn().mockResolvedValue(true),
+            canAccessReceipt: jest.fn().mockResolvedValue(true),
+            canDeleteReceipt: jest.fn().mockResolvedValue(true),
+          },
+        },
       ],
-    }).compile();
+    })
+      .overrideGuard(JwtAuthGuard).useValue({ canActivate: () => true })
+      .overrideGuard(AuthorizationGuard).useValue({ canActivate: () => true })
+      .compile();
 
     controller = module.get<RecurringSplitsController>(
       RecurringSplitsController,

@@ -138,7 +138,7 @@ impl MultisigSplitsContract {
     /// Execute a multi-signature split
     ///
     /// This function executes a split once all required signatures are collected
-    /// and the time lock has expired.
+    /// and the time lock has expired. Records an execution intent and emits events.
     pub fn execute_split(env: Env, split_id: String) -> Result<(), MultisigError> {
         // Check if split exists
         if !storage::split_exists(&env, &split_id) {
@@ -162,10 +162,23 @@ impl MultisigSplitsContract {
             return Err(MultisigError::TimeLockNotExpired);
         }
 
+        // Record execution intent with clear action description
+        let action = String::from_slice(&env, "Execute multi-sig split");
+        let intent = storage::record_execution_intent(&env, &split_id, &action);
+        
+        // Emit event about intent recording
+        events::emit_execution_intent_recorded(&env, &split_id, &action, intent.recorded_at);
+
         // Execute the split
         storage::update_split_status(&env, &split_id, &MultisigStatus::Executed);
 
-        // Emit execution event
+        // Mark intent as executed
+        storage::mark_intent_executed(&env, &split_id);
+
+        // Emit execution event for intent completion
+        events::emit_execution_intent_executed(&env, &split_id, env.ledger().timestamp());
+
+        // Emit final execution event
         events::emit_split_executed(&env, &split_id);
 
         Ok(())

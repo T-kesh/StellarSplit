@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between } from 'typeorm';
 import { ExpenseCategory } from './entities/expense-category.entity';
@@ -95,10 +95,32 @@ export class ComplianceService {
         return summary;
     }
 
-    async getTaxDeductibleTotal(userId: string, period: string) {
-        const year = parseInt(period);
-        const summary = await this.getSummary(userId, year);
+    async downloadExport(requestId: string, userId: string) {
+        const request = await this.exportRepo.findOne({ where: { id: requestId, userId } });
+        if (!request) throw new NotFoundException('Export request not found or access denied');
+        if (request.status !== ExportStatus.READY) throw new BadRequestException('Export not ready');
 
-        return Object.values(summary).reduce((acc, curr) => acc + curr.deductible, 0);
+        // Return the file content or stream
+        const fs = require('fs');
+        const path = require('path');
+        const filePath = path.join(process.cwd(), 'exports', `tax-export-${requestId}.${request.exportFormat.toLowerCase()}`);
+        if (!fs.existsSync(filePath)) throw new NotFoundException('File not found');
+
+        return {
+            fileName: `tax-export-${requestId}.${request.exportFormat.toLowerCase()}`,
+            content: fs.readFileSync(filePath),
+            mimeType: this.getMimeType(request.exportFormat),
+        };
+    }
+
+    private getMimeType(format: ExportFormat): string {
+        switch (format) {
+            case ExportFormat.CSV: return 'text/csv';
+            case ExportFormat.PDF: return 'application/pdf';
+            case ExportFormat.QBO: return 'application/octet-stream';
+            case ExportFormat.JSON: return 'application/json';
+            case ExportFormat.OFX: return 'application/xml';
+            default: return 'application/octet-stream';
+        }
     }
 }

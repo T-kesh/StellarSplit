@@ -6,6 +6,7 @@ mod errors;
 mod events;
 mod storage;
 mod types;
+mod event_assertions;
 
 #[cfg(test)]
 mod test;
@@ -191,6 +192,7 @@ impl StakingContract {
         let token_client = token::Client::new(&env, &token_address);
         token_client.transfer(&env.current_contract_address(), &staker, &amount);
 
+        events::emit_withdrawn(&env, &staker, amount);
         Ok(())
     }
 
@@ -199,7 +201,7 @@ impl StakingContract {
         admin.require_auth();
         let stored_admin = storage::get_admin(&env).ok_or(Error::NotInitialized)?;
         if admin != stored_admin {
-            return Err(Error::NotInitialized); // Or a specific Unauthorized error
+            return Err(Error::Unauthorized);
         }
 
         if amount <= 0 {
@@ -224,6 +226,7 @@ impl StakingContract {
         let current_index = storage::get_reward_index(&env);
         storage::set_reward_index(&env, current_index + index_increase);
 
+        events::emit_reward_deposited(&env, &admin, amount);
         Ok(())
     }
 

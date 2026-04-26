@@ -1,11 +1,18 @@
 import { Catch, ArgumentsHost, HttpStatus, ExceptionFilter, Logger } from '@nestjs/common';
 import { EntityNotFoundError, QueryFailedError } from 'typeorm';
+import { ApiErrorResponseDto } from '../dto/api-error-response.dto';
+import { ErrorCodes } from '../errors/error-codes';
+
+
+
 
 @Catch(EntityNotFoundError, QueryFailedError)
 export class TypeOrmExceptionFilter implements ExceptionFilter {
     private readonly logger = new Logger(TypeOrmExceptionFilter.name);
 
     catch(exception: EntityNotFoundError | QueryFailedError, host: ArgumentsHost) {
+
+        
         const ctx = host.switchToHttp();
         const response = ctx.getResponse<any>();
         const request = ctx.getRequest<any>();

@@ -237,10 +237,10 @@ NODE_ENV=production
 PORT=3000
 
 # Backend API URL (REQUIRED - must point to your backend)
-BASE_API_URL=https://api.stellarsplit.com/api
+BASE_API_URL=https://api.stellarsplit.com/api/v1
 
 # For Vite-based builds, use VITE_ prefix
-VITE_API_URL=https://api.stellarsplit.com/api
+VITE_API_URL=https://api.stellarsplit.com/api/v1
 ```
 
 ### Environment Variable Explanations
@@ -358,7 +358,7 @@ npm install
 Create `.env.production` in the `frontend/` directory:
 
 ```bash
-VITE_API_URL=https://api.stellarsplit.com/api
+VITE_API_URL=https://api.stellarsplit.com/api/v1
 ```
 
 ### Step 3: Build for Production
@@ -659,7 +659,7 @@ EXPOSE 3000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/api/health || exit 1
+  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/api/v1/health || exit 1
 
 # Start application
 CMD ["node", "dist/main.js"]

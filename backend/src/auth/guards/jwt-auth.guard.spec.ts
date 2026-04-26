@@ -111,6 +111,8 @@ describe("JwtAuthGuard", () => {
     expect(context.switchToHttp().getRequest().user).toEqual({
       id: "dev-user",
       walletAddress: "dev-user",
+      raw: { sub: "dev-user" },
+      wallet: "dev-user",
     });
   });
 });

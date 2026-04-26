@@ -36,9 +36,10 @@ bash scripts/ci-contracts.sh build  # WASM build only
 | path-payment | Production | Yes | Automatic currency conversion via Stellar path payments |
 | split-template | Production | Yes | Reusable split templates with versioning |
 | staking | Production | Yes | Staking, governance delegation, and reward distribution |
-| dispute-resolution | Broken | - | Many compilation errors; mid-port to pinned Soroban toolchain |
-| split-escrow | Broken | - | Many compilation errors; draft/broken source |
-| multi-sig-splits | Broken | - | E0507 move error; needs ownership fix |
+| dispute-resolution | Production | Yes | On-chain dispute voting and escrow settlement |
+| split-escrow | Experimental | - | Many compilation errors; draft/broken source |
+| multi-sig-splits | Experimental | - | E0507 move error; needs ownership fix |
+| reminder | Archived | - | Orphaned contract area; incomplete structure, relocated to archived/ |
 
 ## Project Structure
 
@@ -50,9 +51,13 @@ contracts/
 ├── path-payment/              # Path payment currency conversion
 ├── split-template/            # Reusable split templates (versioned)
 ├── staking/                   # Staking, governance & rewards
-├── dispute-resolution/        # (excluded - broken)
-├── split-escrow/              # (excluded - broken)
-├── multi-sig-splits/          # (excluded - broken)
+├── dispute-resolution/        # On-chain dispute voting and escrow settlement
+├── split-escrow/              # (experimental - broken)
+├── multi-sig-splits/          # (experimental - broken)
+├── archived/
+│   └── reminder/              # (archived - orphaned, incomplete)
+├── docs/
+│   └── workspace-policy.md    # Workspace membership and CI support policy
 ├── scripts/
 │   └── ci-contracts.sh        # CI: fmt, test, build for supported contracts
 └── README.md                  # This file

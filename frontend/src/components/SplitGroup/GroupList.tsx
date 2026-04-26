@@ -1,5 +1,5 @@
 import React from "react";
-import { Group } from "../../types/split-group";
+import type { Group } from "../../types/split-group";
 
 interface Props {
   groups: Group[];

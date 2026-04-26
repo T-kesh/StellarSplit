@@ -1,5 +1,6 @@
 import { useMemo } from "react";
-import type { SplitStatus, SplitRole } from "../../pages/SplitHistoryPage";
+import { useTranslation } from "react-i18next";
+import type { SplitStatus, SplitRole } from "../../services/splitHistoryRepository";
 
 export type SortOption =
   | "date-desc"
@@ -20,7 +21,14 @@ interface HistoryFiltersProps {
   onChange: (next: FiltersState) => void;
 }
 
+const statusLabelKey: Record<SplitStatus, string> = {
+  active: "history.statusActive",
+  completed: "history.statusCompleted",
+  cancelled: "history.statusCancelled",
+};
+
 export function HistoryFilters({ value, onChange }: HistoryFiltersProps) {
+  const { t } = useTranslation();
   const statusList = useMemo<SplitStatus[]>(() => ["active", "completed", "cancelled"], []);
 
   const toggleStatus = (s: SplitStatus) => {
@@ -35,19 +43,23 @@ export function HistoryFilters({ value, onChange }: HistoryFiltersProps) {
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
         {/* Search */}
         <div>
-          <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Search</label>
+          <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">
+            {t("history.search")}
+          </label>
           <input
             type="text"
             value={value.search}
             onChange={(e) => onChange({ ...value, search: e.target.value })}
-            placeholder="Title or participant"
+            placeholder={t("history.searchPlaceholder")}
             className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm"
           />
         </div>
 
         {/* Status */}
         <div>
-          <span className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Status</span>
+          <span className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">
+            {t("history.status")}
+          </span>
           <div className="flex flex-wrap gap-2">
             {statusList.map((s) => {
               const active = value.statuses.has(s);
@@ -66,7 +78,7 @@ export function HistoryFilters({ value, onChange }: HistoryFiltersProps) {
                       : "bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 border-gray-300 dark:border-gray-700"
                   }`}
                 >
-                  {capitalize(s)}
+                  {t(statusLabelKey[s])}
                 </button>
               );
             })}
@@ -75,38 +87,38 @@ export function HistoryFilters({ value, onChange }: HistoryFiltersProps) {
 
         {/* Role */}
         <div>
-          <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Role</label>
+          <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">
+            {t("history.role")}
+          </label>
           <select
             className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm"
             value={value.role}
             onChange={(e) => onChange({ ...value, role: e.target.value as FiltersState["role"] })}
           >
-            <option value="all">All</option>
-            <option value="creator">Creator</option>
-            <option value="participant">Participant</option>
+            <option value="all">{t("history.roleAll")}</option>
+            <option value="creator">{t("history.roleCreator")}</option>
+            <option value="participant">{t("history.roleParticipant")}</option>
           </select>
         </div>
 
         {/* Sort */}
         <div>
-          <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">Sort</label>
+          <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">
+            {t("history.sort")}
+          </label>
           <select
             className="w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-sm"
             value={value.sort}
             onChange={(e) => onChange({ ...value, sort: e.target.value as SortOption })}
           >
-            <option value="date-desc">Date (newest)</option>
-            <option value="date-asc">Date (oldest)</option>
-            <option value="amount-desc">Amount (high → low)</option>
-            <option value="amount-asc">Amount (low → high)</option>
-            <option value="status">Status</option>
+            <option value="date-desc">{t("history.sortDateDesc")}</option>
+            <option value="date-asc">{t("history.sortDateAsc")}</option>
+            <option value="amount-desc">{t("history.sortAmountDesc")}</option>
+            <option value="amount-asc">{t("history.sortAmountAsc")}</option>
+            <option value="status">{t("history.sortByStatus")}</option>
           </select>
         </div>
       </div>
     </div>
   );
-}
-
-function capitalize(str: string) {
-  return str.charAt(0).toUpperCase() + str.slice(1);
 }

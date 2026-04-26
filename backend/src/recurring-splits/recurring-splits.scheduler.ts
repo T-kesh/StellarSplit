@@ -142,9 +142,9 @@ export class RecurringSplitsScheduler {
     this.logger.log("Starting expired recurring splits cleanup...");
 
     try {
-      // Get all active recurring splits
+      // Get all active recurring splits across all creators
       const allActive =
-        await this.recurringSplitsService.getRecurringSplitsByCreator("");
+        await this.recurringSplitsService.getAllActiveRecurringSplits();
 
       const now = new Date();
       let deactivatedCount = 0;

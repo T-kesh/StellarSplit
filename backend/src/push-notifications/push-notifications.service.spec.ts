@@ -112,6 +112,31 @@ describe('PushNotificationsService', () => {
     });
   });
 
+  describe('unregisterDevice', () => {
+    it('should delete device if it belongs to user', async () => {
+      const device = { id: 'uuid', userId: 'user1' };
+      mockDeviceRepo.findOne.mockResolvedValue(device);
+
+      await service.unregisterDevice('uuid', 'user1');
+
+      expect(mockDeviceRepo.findOne).toHaveBeenCalledWith({ where: { id: 'uuid' } });
+      expect(mockDeviceRepo.delete).toHaveBeenCalledWith('uuid');
+    });
+
+    it('should throw error if device not found', async () => {
+      mockDeviceRepo.findOne.mockResolvedValue(null);
+
+      await expect(service.unregisterDevice('uuid', 'user1')).rejects.toThrow('Device not found');
+    });
+
+    it('should throw error if device does not belong to user', async () => {
+      const device = { id: 'uuid', userId: 'user2' };
+      mockDeviceRepo.findOne.mockResolvedValue(device);
+
+      await expect(service.unregisterDevice('uuid', 'user1')).rejects.toThrow('Device does not belong to user');
+    });
+  });
+
   describe('updatePreferences', () => {
     it('should update preferences', async () => {
       const dto = {
@@ -170,9 +195,56 @@ describe('PushNotificationsService', () => {
   });
 
   describe('sendNotification', () => {
-    it('should queue a notification job', async () => {
+    it('should queue a notification job when push is enabled', async () => {
+        const pref = { pushEnabled: true };
+        mockPrefRepo.findOne.mockResolvedValue(pref);
+
         await service.sendNotification('user1', NotificationEventType.SPLIT_CREATED, 'Title', 'Body', { key: 'value' });
         
+        expect(mockPrefRepo.findOne).toHaveBeenCalledWith({ where: { userId: 'user1', eventType: NotificationEventType.SPLIT_CREATED } });
+        expect(mockPushQueue.add).toHaveBeenCalledWith('sendPush', {
+            userId: 'user1',
+            eventType: NotificationEventType.SPLIT_CREATED,
+            title: 'Title',
+            body: 'Body',
+            data: { key: 'value' },
+        });
+    });
+
+    it('should not queue when push is disabled', async () => {
+        const pref = { pushEnabled: false };
+        mockPrefRepo.findOne.mockResolvedValue(pref);
+
+        await service.sendNotification('user1', NotificationEventType.SPLIT_CREATED, 'Title', 'Body');
+
+        expect(mockPushQueue.add).not.toHaveBeenCalled();
+    });
+
+    it('should not queue during quiet hours', async () => {
+        const now = new Date();
+        const quietStart = new Date(now);
+        quietStart.setHours(now.getHours() - 1); // 1 hour ago
+        const quietEnd = new Date(now);
+        quietEnd.setHours(now.getHours() + 1); // 1 hour from now
+
+        const pref = { 
+            pushEnabled: true, 
+            quietHoursStart: quietStart.toTimeString().split(' ')[0],
+            quietHoursEnd: quietEnd.toTimeString().split(' ')[0]
+        };
+        mockPrefRepo.findOne.mockResolvedValue(pref);
+
+        await service.sendNotification('user1', NotificationEventType.SPLIT_CREATED, 'Title', 'Body');
+
+        expect(mockPushQueue.add).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('sendTestNotification', () => {
+    it('should queue a test notification job bypassing checks', async () => {
+        await service.sendTestNotification('user1', 'Title', 'Body', { key: 'value' });
+        
+        expect(mockPrefRepo.findOne).not.toHaveBeenCalled();
         expect(mockPushQueue.add).toHaveBeenCalledWith('sendPush', {
             userId: 'user1',
             eventType: NotificationEventType.SPLIT_CREATED,

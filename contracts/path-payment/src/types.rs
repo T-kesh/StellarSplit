@@ -40,4 +40,7 @@ pub enum Error {
     UnsupportedAsset = 12,
     AmountTooLow = 13,
     AmountTooHigh = 14,
+    AlreadyInitialized = 15,
+    MissingRouter = 16,
+    InvalidState = 17,
 }

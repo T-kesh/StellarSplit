@@ -1,7 +1,7 @@
 import { createContext, useState, useEffect, useCallback, useRef, type ReactNode } from 'react';
-import { io, Socket } from 'socket.io-client';
+import type { Socket } from 'socket.io-client';
 import type { PresenceUser, ActivityEvent, ConflictInfo, CollaborationState, SplitUpdate } from '../../types/collaboration';
-import { BASE_API_URL } from '../../constants/api';
+import { createCollaborationSocket, type ServerToClientEvents, type ClientToServerEvents } from '../../services/collaborationClient';
 
 export interface CollaborationContextType extends CollaborationState {
     joinSplit: (splitId: string, user: Partial<PresenceUser>) => void;
@@ -15,7 +15,7 @@ export interface CollaborationContextType extends CollaborationState {
 export const CollaborationContext = createContext<CollaborationContextType | undefined>(undefined);
 
 export function CollaborationProvider({ children }: { children: ReactNode }) {
-    const [socket, setSocket] = useState<Socket | null>(null);
+    const [socket, setSocket] = useState<Socket<ServerToClientEvents, ClientToServerEvents> | null>(null);
     const [connected, setConnected] = useState(false);
     const [presence, setPresence] = useState<Record<string, PresenceUser>>({});
     const [activities, setActivities] = useState<ActivityEvent[]>([]);
@@ -25,16 +25,7 @@ export function CollaborationProvider({ children }: { children: ReactNode }) {
     const currentUser = useRef<Partial<PresenceUser>>({});
 
     useEffect(() => {
-        const url = new URL(BASE_API_URL.startsWith('http') ? BASE_API_URL : window.location.origin);     
-        const socketUrl = `${url.protocol}//${url.host}`;
-        const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-
-        const newSocket = io(socketUrl, {
-            path: '/socket.io',
-            auth: { token }, 
-            autoConnect: true,
-            transports: ['websocket', 'polling']
-        });
+        const newSocket = createCollaborationSocket();
 
         newSocket.on('connect', () => {
             setConnected(true);
@@ -67,8 +58,9 @@ export function CollaborationProvider({ children }: { children: ReactNode }) {
             setActivities((prev) => [activity, ...prev].slice(0, 50));
         });
 
-        newSocket.on('split_updated', (update: any) => {
-            console.log('Received split update:', update);
+        newSocket.on('split_updated', (update: SplitUpdate) => {
+            // Update split state with received payload
+            // Implementation depends on state management strategy
         });
 
         // Listen for cursor movements from others
@@ -125,7 +117,7 @@ export function CollaborationProvider({ children }: { children: ReactNode }) {
         }
     }, [socket]);
 
-    const resolveConflict = useCallback((field: string, resolution: 'local' | 'remote' | 'merge') => {    
+    const resolveConflict = useCallback((field: string, _resolution: 'local' | 'remote' | 'merge') => {    
         setConflicts((prev) => prev.filter(c => c.field !== field));
     }, []);
 

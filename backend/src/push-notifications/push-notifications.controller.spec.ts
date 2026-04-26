@@ -18,6 +18,7 @@ describe('PushNotificationsController', () => {
     updatePreferences: jest.fn(),
     getPreferences: jest.fn(),
     sendNotification: jest.fn(),
+    sendTestNotification: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -63,10 +64,11 @@ describe('PushNotificationsController', () => {
   describe('unregisterDevice', () => {
     it('should unregister a device', async () => {
       const deviceId = 'uuid';
+      const req = { user: { walletAddress: 'user1' } };
       
-      await controller.unregisterDevice(deviceId);
+      await controller.unregisterDevice(deviceId, req);
       
-      expect(mockService.unregisterDevice).toHaveBeenCalledWith(deviceId);
+      expect(mockService.unregisterDevice).toHaveBeenCalledWith(deviceId, 'user1');
     });
   });
 
@@ -77,15 +79,6 @@ describe('PushNotificationsController', () => {
       await controller.getDevices(req);
       
       expect(mockService.getDevices).toHaveBeenCalledWith('user1');
-    });
-
-    it('should return empty list if no user id', async () => {
-      const req = { query: {} }; // No user, empty query
-      
-      const result = await controller.getDevices(req);
-      
-      expect(result).toEqual([]);
-      expect(mockService.getDevices).not.toHaveBeenCalled();
     });
   });
 
@@ -103,19 +96,28 @@ describe('PushNotificationsController', () => {
     });
   });
 
+  describe('getPreferences', () => {
+    it('should get preferences for user', async () => {
+      const req = { user: { walletAddress: 'user1' } };
+      
+      await controller.getPreferences(req);
+      
+      expect(mockService.getPreferences).toHaveBeenCalledWith('user1');
+    });
+  });
+
   describe('sendTestNotification', () => {
       it('should send a test notification', async () => {
           const body = {
-              userId: 'user1',
               title: 'Test',
               message: 'Message'
           };
+          const req = { user: { walletAddress: 'user1' } };
           
-          await controller.sendTestNotification(body);
+          await controller.sendTestNotification(body, req);
           
-          expect(mockService.sendNotification).toHaveBeenCalledWith(
+          expect(mockService.sendTestNotification).toHaveBeenCalledWith(
               'user1',
-              NotificationEventType.SPLIT_CREATED,
               'Test',
               'Message'
           );

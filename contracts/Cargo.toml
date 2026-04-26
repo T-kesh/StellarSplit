@@ -11,8 +11,13 @@ members = [
     "split-escrow",
     "multi-sig-splits",
 ]
-# Excluded: these crates have compilation errors and are not yet workspace-ready
-# - dispute-resolution: many compilation errors (mid-port to pinned Soroban toolchain)
+# Experimental / broken crates remain in the workspace so they can share
+# workspace dependencies and be compiled locally, but they are excluded from
+# the CI-supported set (see scripts/ci-contracts.sh).
+#
+# Crates currently excluded from CI:
+# - split-escrow: many compilation errors (draft/broken source)
+# - multi-sig-splits: E0507 move error (needs ownership fix)
 exclude = [
 ]
 

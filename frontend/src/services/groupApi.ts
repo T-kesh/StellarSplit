@@ -1,31 +1,27 @@
-import { Group, ApiResponse } from "../types/split-group";
-
-const API_BASE = "/api/groups";
+import type { Group, ApiResponse } from "../types/split-group";
+import { getSplitGroupDataSource } from "./splitGroupDataSource";
 
 export async function fetchGroups(): Promise<ApiResponse<Group[]>> {
-  const res = await fetch(API_BASE);
-  return res.json();
+  const groups = await getSplitGroupDataSource().list();
+  return { data: groups };
 }
 
-export async function createGroup(name: string, members: string[]): Promise<ApiResponse<Group>> {
-  const res = await fetch(API_BASE, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ name, members }),
-  });
-  return res.json();
+export async function createGroup(group: Group): Promise<ApiResponse<Group>> {
+  const created = await getSplitGroupDataSource().create(group);
+  return { data: created };
 }
 
-export async function addMember(groupId: string, member: string): Promise<ApiResponse<Group>> {
-  const res = await fetch(`${API_BASE}/${groupId}/members`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ member }),
-  });
-  return res.json();
+export async function updateGroup(group: Group): Promise<ApiResponse<Group>> {
+  const updated = await getSplitGroupDataSource().update(group);
+  return { data: updated };
 }
 
-export async function startSplit(groupId: string): Promise<ApiResponse<Group>> {
-  const res = await fetch(`${API_BASE}/${groupId}/split`, { method: "POST" });
-  return res.json();
+export async function deleteGroup(groupId: string): Promise<ApiResponse<{ id: string }>> {
+  await getSplitGroupDataSource().remove(groupId);
+  return { data: { id: groupId } };
+}
+
+export async function startSplit(groupId: string): Promise<ApiResponse<Group | null>> {
+  const updated = await getSplitGroupDataSource().touchSplit(groupId);
+  return { data: updated };
 }

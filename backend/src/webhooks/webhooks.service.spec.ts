@@ -6,8 +6,6 @@ import { Webhook, WebhookEventType } from './webhook.entity';
 import { CreateWebhookDto } from './dto/create-webhook.dto';
 import { UpdateWebhookDto } from './dto/update-webhook.dto';
 import { NotFoundException, BadRequestException } from '@nestjs/common';
-import { deliverWebhook } from "../webhooks.service";
-import { webhookRepo } from "../webhooks.repository";
 
 describe('WebhooksService', () => {
   let service: WebhooksService;
@@ -226,18 +224,5 @@ describe('WebhooksService', () => {
       expect(webhook.failureCount).toBe(10);
       expect(webhook.isActive).toBe(false);
     });
-  });
-
-  describe("Webhooks Service", () => {
-  it("should save successful delivery", async () => {
-    await deliverWebhook("http://localhost:4000/test", { foo: "bar" }, "secret");
-    const history = await webhookRepo.find();
-    expect(history[0].status).toBe("success");
-  });
-
-  it("should retry on failure", async () => {
-    await deliverWebhook("http://invalid-url", { foo: "bar" }, "secret");
-    const history = await webhookRepo.find();
-    expect(history[0].status).toBe("failed");
   });
 });

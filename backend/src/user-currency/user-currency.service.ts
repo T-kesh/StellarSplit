@@ -1,113 +1,47 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Repository, MoreThan } from "typeorm";
-import axios from "axios";
-import { UserCurrencyPreference } from "@/currency/entities/user-currency-preference.entity";
-import { CurrencyRateCache } from "@/currency/entities/currency-rate-cache.entity";
-import { GeoService } from "@/currency/geo/geo.service";
+import { Injectable } from '@nestjs/common';
+import type { Request } from 'express';
+import {
+  CRYPTO_CURRENCIES,
+  FIAT_CURRENCIES,
+} from '@/currency/currency.constants';
+import { CurrencyService as CoreCurrencyService } from '@/currency/currency.service';
 
 @Injectable()
 export class CurrencyService {
-  constructor(
-    @InjectRepository(UserCurrencyPreference)
-    private prefRepo: Repository<UserCurrencyPreference>,
+  constructor(private readonly coreCurrencyService: CoreCurrencyService) {}
 
-    @InjectRepository(CurrencyRateCache)
-    private rateRepo: Repository<CurrencyRateCache>,
-
-    private geoService: GeoService,
-  ) {}
-
-  async detectCurrency(ip: string) {
-    return this.geoService.detectFromIp(ip);
+  detectCurrency(ip: string) {
+    return this.coreCurrencyService.detectFromIP(ip);
   }
 
-  async getOrCreatePreference(userId: string, ip: string) {
-    let pref = await this.prefRepo.findOne({ where: { userId } });
-
-    if (!pref) {
-      const geo = await this.geoService.detectFromIp(ip);
-
-      pref = this.prefRepo.create({
-        userId,
-        preferredCurrency: geo.currency || "USD",
-        detectedCountry: geo.countryCode,
-        detectedCurrency: geo.currency,
-        autoDetected: true,
-      });
-
-      await this.prefRepo.save(pref);
-    }
-
-    return pref;
+  detectCurrencyFromRequest(request: Request) {
+    return this.coreCurrencyService.detectFromRequest(request);
   }
 
-  async updatePreference(userId: string, currency: string) {
-    const pref = await this.prefRepo.findOne({ where: { userId } });
-    if (!pref) throw new NotFoundException();
-
-    pref.preferredCurrency = currency;
-    pref.autoDetected = false;
-
-    return this.prefRepo.save(pref);
+  getOrCreatePreference(userId: string, requestOrIp: Request | string) {
+    return this.coreCurrencyService.getOrCreatePreference(userId, requestOrIp);
   }
 
-  async getRate(base: string, target: string) {
-    const now = new Date();
-
-    const cached = await this.rateRepo.findOne({
-      where: {
-        baseCurrency: base,
-        targetCurrency: target,
-        expiresAt: MoreThan(now),
-      },
-    });
-
-    if (cached) return cached.rate;
-
-    const rate = await this.fetchRateFromApi(base, target);
-
-    await this.rateRepo.save({
-      baseCurrency: base,
-      targetCurrency: target,
-      rate,
-      source: "exchangerate-api",
-      fetchedAt: now,
-      expiresAt: new Date(now.getTime() + 10 * 60 * 1000),
-    });
-
-    return rate;
+  updatePreference(userId: string, currency: string) {
+    return this.coreCurrencyService.updatePreference(userId, currency);
   }
 
-  private async fetchRateFromApi(base: string, target: string) {
-    if (target === "XLM" || target === "USDC") {
-      const { data } = await axios.get(
-        `https://api.coingecko.com/api/v3/simple/price?ids=stellar,usd-coin&vs_currencies=${base.toLowerCase()}`,
-      );
-
-      if (target === "XLM") {
-        return 1 / data.stellar[base.toLowerCase()];
-      }
-
-      if (target === "USDC") {
-        return 1 / data["usd-coin"][base.toLowerCase()];
-      }
-    }
-
-    const { data } = await axios.get(
-      `https://api.exchangerate-api.com/v4/latest/${base}`,
-    );
-
-    return data.rates[target] || 1;
+  getRate(base: string, target: string) {
+    return this.coreCurrencyService.getRate(base, target);
   }
 
-  async convert(base: string, target: string, amount: number) {
-    const rate = await this.getRate(base, target);
+  getRates(base: string, targets?: string[]) {
+    return this.coreCurrencyService.getRates(base, targets);
+  }
+
+  convert(base: string, target: string, amount: number) {
+    return this.coreCurrencyService.convert(base, target, amount);
+  }
+
+  getSupportedSummary() {
     return {
-      base,
-      target,
-      amount,
-      converted: amount * rate,
+      fiatSupported: FIAT_CURRENCIES.length,
+      cryptoSupported: [...CRYPTO_CURRENCIES],
     };
   }
 }

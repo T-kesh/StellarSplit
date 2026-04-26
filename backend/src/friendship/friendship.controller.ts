@@ -11,9 +11,10 @@ import {
 
 import { FriendshipService } from './provider/service';
 import { FriendRequestDto } from './dto/friendrequest.dto';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
 @Controller('friends')
-// @UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard)
 @UsePipes(new ValidationPipe({ whitelist: true }))
 export class FriendshipController {
   constructor(private readonly service: FriendshipService) {}

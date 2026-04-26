@@ -1,16 +1,12 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import type { AnalyticsData, DateRange } from "../types/analytics";
-import {
-  fetchSpendingTrends,
-  fetchCategoryBreakdown,
-  fetchTopPartners,
-  fetchDebtBalances,
-  fetchHeatmapData,
-  fetchTimeDistribution,
-} from "../utils/analytics-api";
+import { fetchAnalyticsBundle } from "../utils/analytics-api";
+import type { AnalyticsMode, AnalyticsSource } from "../services/analyticsDataProvider";
+import { useAbortableRequest } from "./useAbortableRequest";
 
 interface UseAnalyticsReturn {
   data: AnalyticsData | null;
+  source: AnalyticsSource | null;
   loading: boolean;
   error: string | null;
   dateRange: DateRange;
@@ -28,50 +24,18 @@ function defaultDateRange(): DateRange {
   };
 }
 
-export function useAnalytics(): UseAnalyticsReturn {
+export function useAnalytics(mode: AnalyticsMode = "hybrid"): UseAnalyticsReturn {
   const [dateRange, setDateRange] = useState<DateRange>(defaultDateRange);
-  const [data, setData] = useState<AnalyticsData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [source, setSource] = useState<AnalyticsSource | null>(null);
 
-  const loadData = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const [
-        spendingTrends,
-        categoryBreakdown,
-        topPartners,
-        debtBalances,
-        heatmapData,
-        timeDistribution,
-      ] = await Promise.all([
-        fetchSpendingTrends(dateRange),
-        fetchCategoryBreakdown(dateRange),
-        fetchTopPartners(dateRange),
-        fetchDebtBalances(),
-        fetchHeatmapData(dateRange),
-        fetchTimeDistribution(dateRange),
-      ]);
+  const { data, loading, error, refetch } = useAbortableRequest(
+    async (_signal: AbortSignal) => {
+      const result = await fetchAnalyticsBundle(dateRange, mode);
+      setSource(result.source);
+      return result.data;
+    },
+    [dateRange, mode],
+  );
 
-      setData({
-        spendingTrends,
-        categoryBreakdown,
-        topPartners,
-        debtBalances,
-        heatmapData,
-        timeDistribution,
-      });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load analytics");
-    } finally {
-      setLoading(false);
-    }
-  }, [dateRange]);
-
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
-
-  return { data, loading, error, dateRange, setDateRange, refetch: loadData };
+  return { data, source, loading, error, dateRange, setDateRange, refetch };
 }

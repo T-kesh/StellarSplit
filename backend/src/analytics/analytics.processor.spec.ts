@@ -3,6 +3,9 @@ const mockDecorator = () => () => {};
 jest.mock("@nestjs/bull", () => ({
   Processor: mockDecorator,
   Process: mockDecorator,
+  OnQueueFailed: mockDecorator,
+  OnQueueCompleted: mockDecorator,
+  OnQueueActive: mockDecorator,
 }));
 
 jest.mock("typeorm", () => ({
@@ -27,7 +30,6 @@ jest.mock("./reports.entity", () => ({
 }));
 
 const { AnalyticsProcessor } = require("./analytics.processor");
-const fs = require("fs");
 
 jest.mock("fs", () => ({
   promises: {

@@ -1,4 +1,4 @@
-import { useTheme } from "./ThemeContex";
+import { useTheme } from "./ThemeContext";
 
 interface Props {
   className?: string;

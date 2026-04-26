@@ -17,6 +17,7 @@ import {
   getStoredActiveUserId,
   setStoredActiveUserId,
 } from '../utils/session'
+import { sessionStore, SessionKey } from '../utils/sessionStore'
 
 type WalletContextValue = {
   publicKey: string | null
@@ -192,6 +193,20 @@ export function WalletProvider({ children }: { children: React.ReactNode }) {
     setWalletNetworkPassphrase(null)
     setError(null)
     setStoredActiveUserId(null)
+  }, [])
+
+  // Handle cross-tab synchronization
+  React.useEffect(() => {
+    return sessionStore.subscribe((key, value) => {
+      if (key === SessionKey.ACTIVE_USER_ID) {
+        if (!value) {
+          setPublicKey(null)
+          setLastConnectedAccount(null)
+        } else {
+          setLastConnectedAccount(value)
+        }
+      }
+    })
   }, [])
 
   const signTransaction = React.useCallback(

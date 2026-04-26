@@ -6,7 +6,7 @@ import { QRCodeGenerator } from './QRCodeGenerator';
 import { QRCodeScanner } from './QRCodeScanner';
 import { PaymentURIHandler } from './PaymentURIHandler';
 import type { ParsedStellarPaymentURI } from '../../utils/stellar/paymentUri';
-import { useWallet } from '../../hooks/use-wallet';
+import { usePaymentCheckout } from '../../hooks/usePaymentCheckout';
 
 interface PaymentModalProps {
     isOpen: boolean;
@@ -29,13 +29,13 @@ export const PaymentModal = ({
     splitId,
     onConfirm,
     onConfirmScannedPayment,
-    isProcessing
+    isProcessing: externalIsProcessing
 }: PaymentModalProps) => {
     const { t } = useTranslation();
     const {
         canTransact,
         connect,
-        error,
+        walletError: error,
         hasFreighter,
         isConnected,
         isConnecting,
@@ -44,17 +44,22 @@ export const PaymentModal = ({
         refresh,
         requiredNetworkLabel,
         walletNetworkLabel,
-    } = useWallet();
+        isProcessing: checkoutIsProcessing,
+    } = usePaymentCheckout();
+    const isProcessing = externalIsProcessing || checkoutIsProcessing;
     const [isScannerOpen, setIsScannerOpen] = useState(false);
     const [scannedPaymentUri, setScannedPaymentUri] = useState<string | null>(null);
-    const paymentRequest = useMemo(() => ({
-        destination,
-        amount,
-        memo: splitId,
-        memoType: 'text' as const,
-        message: `Split payment for ${splitId}`,
-        splitId,
-    }), [amount, destination, splitId]);
+    const paymentRequest = useMemo(
+        () => ({
+            destination,
+            amount,
+            memo: splitId,
+            memoType: 'text' as const,
+            message: t('split.paymentMemo', { splitId }),
+            splitId,
+        }),
+        [amount, destination, splitId, t],
+    );
     const accountLabel = publicKey ? `${publicKey.slice(0, 4)}...${publicKey.slice(-4)}` : null;
 
     if (!isOpen) return null;
@@ -87,7 +92,7 @@ export const PaymentModal = ({
                 <button 
                     onClick={onClose} 
                     className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)] rounded-full p-1"
-                    aria-label="Close payment modal"
+                    aria-label={t('common.close')}
                 >
                     <X size={24} />
                 </button>
@@ -108,19 +113,21 @@ export const PaymentModal = ({
                         className="p-3 border-2 border-purple-100 dark:border-purple-900 rounded-xl flex items-center gap-3 cursor-pointer bg-purple-50/50 dark:bg-purple-900/20"
                         role="button"
                         tabIndex={0}
-                        aria-label="Select payment method: Freighter Wallet"
+                        aria-label={t('split.freighterWallet')}
                     >
                         <div className="w-10 h-10 rounded-full bg-black flex items-center justify-center shadow-sm">
                             <span className="text-white font-bold text-xs">F</span>
                         </div>
                         <div className="flex-1">
-                            <span className="font-bold text-gray-900 dark:text-gray-100 text-sm block">Freighter Wallet</span>
+                            <span className="font-bold text-gray-900 dark:text-gray-100 text-sm block">
+                                {t('split.freighterWallet')}
+                            </span>
                             <span className="text-xs text-purple-600 dark:text-purple-400 font-medium">
                                 {isConnected && accountLabel
                                     ? `${t('split.connected')} • ${accountLabel}`
                                     : hasFreighter
-                                        ? `Expected network: ${requiredNetworkLabel}`
-                                        : 'Freighter not detected'}
+                                        ? t('split.expectedNetwork', { network: requiredNetworkLabel })
+                                        : t('split.freighterNotDetected')}
                             </span>
                         </div>
                         <div className={`flex items-center justify-center w-6 h-6 rounded-full text-white ${canTransact ? 'bg-purple-600' : 'bg-gray-300'}`} aria-hidden="true">
@@ -132,13 +139,16 @@ export const PaymentModal = ({
 
                     {!hasFreighter ? (
                         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                            Install Freighter in this browser before you try to settle a split.
+                            {t('split.installFreighterToSettle')}
                         </div>
                     ) : null}
 
                     {hasFreighter && isConnected && !canTransact ? (
                         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                            Freighter is currently on {walletNetworkLabel}. Switch to {requiredNetworkLabel} before signing this payment.
+                            {t('split.networkSwitchSignModal', {
+                                wallet: walletNetworkLabel ?? '',
+                                required: requiredNetworkLabel ?? '',
+                            })}
                         </div>
                     ) : null}
 
@@ -157,7 +167,7 @@ export const PaymentModal = ({
                                     disabled={isConnecting || isRefreshing || !hasFreighter}
                                     className="rounded-xl bg-purple-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-purple-700 disabled:cursor-not-allowed disabled:opacity-60"
                                 >
-                                    {isConnecting ? 'Connecting...' : 'Connect Freighter'}
+                                    {isConnecting ? t('split.connecting') : t('split.connectFreighter')}
                                 </button>
                             ) : null}
                             <button
@@ -166,20 +176,23 @@ export const PaymentModal = ({
                                 disabled={isRefreshing}
                                 className="rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-800 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
                             >
-                                {isRefreshing ? 'Refreshing...' : 'Refresh wallet'}
+                                {isRefreshing ? t('split.refreshing') : t('split.refreshWallet')}
                             </button>
                         </div>
                     ) : null}
                 </div>
 
-                <QRCodeGenerator paymentRequest={paymentRequest} title="Share Payment QR" />
+                <QRCodeGenerator
+                    paymentRequest={paymentRequest}
+                    title={t('split.sharePaymentQr')}
+                />
 
                 <button
                     type="button"
                     onClick={() => setIsScannerOpen(true)}
                     className="mt-3 w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-gray-800 transition hover:bg-gray-50"
                 >
-                    Scan QR to Pay
+                    {t('split.scanQrToPay')}
                 </button>
 
                 {scannedPaymentUri ? (
@@ -203,7 +216,7 @@ export const PaymentModal = ({
                             {t('split.processing')}
                         </>
                     ) : !canTransact ? (
-                        'Resolve wallet status to continue'
+                        t('split.resolveWalletToContinue')
                     ) : (
                         t('split.confirmPayment')
                     )}

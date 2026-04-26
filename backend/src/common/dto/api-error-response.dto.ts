@@ -38,3 +38,11 @@ export class CountResponseDto {
   @ApiProperty({ example: 5 })
   count!: number;
 }
+
+
+export class ApiErrorResponseDto {
+  code: string;        // machine-readable code
+  message: string;     // human-readable message
+  correlationId?: string; // optional correlation ID for tracing
+  details?: any;       // optional extra context
+}

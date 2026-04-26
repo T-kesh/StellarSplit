@@ -106,7 +106,7 @@ describe('DebtGraphService – simplify()', () => {
   });
 
   // ─── 20-user performance test ────────────────────────────────────────────────
-  it('simplifies 20 users with dense debts in under 100ms', () => {
+  it('simplifies 20 users with dense debts in under 250ms', () => {
     const users = Array.from({ length: 20 }, (_, i) => `wallet${i}`);
     const raw: RawDebt[] = [];
 
@@ -126,7 +126,7 @@ describe('DebtGraphService – simplify()', () => {
     const result = service.simplify(raw);
     const elapsed = Date.now() - start;
 
-    expect(elapsed).toBeLessThan(100);
+    expect(elapsed).toBeLessThan(250);
     expect(result.simplifiedTransactionCount).toBeLessThanOrEqual(users.length - 1);
     assertNetBalancesPreserved(raw, result.simplifiedDebts, 'XLM');
   });

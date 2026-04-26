@@ -3,6 +3,9 @@ import { HttpStatus } from "@nestjs/common";
 import { InvitationsController } from "./invitations.controller";
 import { InvitationsService } from "./invitations.service";
 import { AuthorizationService } from "../auth/services/authorization.service";
+import { AuthorizationGuard } from "../auth/guards/authorization.guard";
+import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
+import { ReceiptPolicyService } from "../receipts/receipt-policy.service";
 import { Invitation } from "./invitation.entity";
 import { CreateInvitationDto } from "./dto/create-invitation.dto";
 import { JoinInvitationDto } from "./dto/join-invitation.dto";
@@ -74,8 +77,19 @@ describe("InvitationsController", () => {
             filterAccessibleSplits: jest.fn().mockResolvedValue([]),
           },
         },
+        {
+          provide: ReceiptPolicyService,
+          useValue: {
+            canCreateReceipt: jest.fn().mockResolvedValue(true),
+            canAccessReceipt: jest.fn().mockResolvedValue(true),
+            canDeleteReceipt: jest.fn().mockResolvedValue(true),
+          },
+        },
       ],
-    }).compile();
+    })
+      .overrideGuard(JwtAuthGuard).useValue({ canActivate: () => true })
+      .overrideGuard(AuthorizationGuard).useValue({ canActivate: () => true })
+      .compile();
 
     controller = module.get<InvitationsController>(InvitationsController);
     service = module.get<InvitationsService>(InvitationsService);

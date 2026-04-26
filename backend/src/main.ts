@@ -6,21 +6,8 @@ import 'reflect-metadata';
 import { AppModule } from './app.module';
 import { GlobalHttpExceptionFilter } from './common/filters/http-exception.filter';
 import { TypeOrmExceptionFilter } from './common/filters/typeorm-exception.filter';
-
-async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
-  const configService = app.get(ConfigService);
-
-import { NestFactory } from '@nestjs/core';
-import { ConfigService } from '@nestjs/config';
-import { ValidationPipe, VersioningType } from '@nestjs/common';
-import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
-import 'reflect-metadata';
-import { AppModule } from './app.module';
-import { GlobalHttpExceptionFilter } from './common/filters/http-exception.filter';
-import { TypeOrmExceptionFilter } from './common/filters/typeorm-exception.filter';
-import { HealthController } from './common/health.controller';
 import { validateEnvironment, Environment } from './config/env.validation';
+import { validateEnv } from './config/env.validation';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -101,17 +88,7 @@ async function bootstrap() {
     maxAge: 86400, // 24 hours preflight cache
   };
   
-  // Additional security headers for production
-  if (nodeEnv === Environment.PRODUCTION) {
-    app.use((req, res, next) => {
-      res.setHeader('X-Content-Type-Options', 'nosniff');
-      res.setHeader('X-Frame-Options', 'DENY');
-      res.setHeader('X-XSS-Protection', '1; mode=block');
-      res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
-      next();
-    });
-  }
-  
+  // Security middleware and production hardening are centralized in SecurityModule.
   app.enableCors(corsOptions);
 
   // Configure Swagger

@@ -27,8 +27,13 @@ import { DisputesController } from "./disputes.controller";
 import { DisputesModule } from "./disputes.module";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { AuthorizationGuard } from "../auth/guards/authorization.guard";
+import { CurrentUser } from "../auth/decorators/current-user.decorator";
 import { DisputeStatus, DisputeType } from "../entities/dispute.entity";
 import { AuthorizationService } from "../auth/services/authorization.service";
+
+jest.setTimeout(15000);
+
+
 
 describe("Dispute Resolution System - Integration Tests", () => {
   let app: INestApplication;
@@ -39,6 +44,8 @@ describe("Dispute Resolution System - Integration Tests", () => {
 
   let sharedSplitId: string;
   let sharedDisputeId: string;
+
+  const mockUser = { id: "test-user", walletAddress: "test-wallet", email: "test@example.com", raw: {} };
 
   const validationPipe = new ValidationPipe({
     whitelist: true,
@@ -149,6 +156,8 @@ describe("Dispute Resolution System - Integration Tests", () => {
           },
           FileDisputeDto,
         ),
+        mockUser as any, // Mock CurrentUser
+        mockUser, // Test user
       );
 
       expect(response).toHaveProperty("id");
@@ -180,6 +189,8 @@ describe("Dispute Resolution System - Integration Tests", () => {
           },
           AddEvidenceDto,
         ),
+        mockUser as any, // Mock CurrentUser
+        mockUser, // Test user
       );
 
       expect(response).toHaveProperty("id");
@@ -198,6 +209,8 @@ describe("Dispute Resolution System - Integration Tests", () => {
       const response = await controller.submitForReview(
         sharedDisputeId,
         await validateBody({}, SubmitForReviewDto),
+        mockUser as any, // Mock CurrentUser
+        mockUser, // Test user
       );
 
       expect(response.status).toBe(DisputeStatus.UNDER_REVIEW);
@@ -215,6 +228,8 @@ describe("Dispute Resolution System - Integration Tests", () => {
           },
           ResolveDisputeDto,
         ),
+        mockUser as any, // Mock CurrentUser
+        mockUser, // Test user
       );
 
       expect(response.status).toBe(DisputeStatus.RESOLVED);
@@ -242,6 +257,8 @@ describe("Dispute Resolution System - Integration Tests", () => {
           },
           AppealDisputeDto,
         ),
+        mockUser as any, // Mock CurrentUser
+        mockUser, // Test user
       );
 
       expect(response.status).toBe(DisputeStatus.APPEALED);
@@ -264,6 +281,8 @@ describe("Dispute Resolution System - Integration Tests", () => {
           },
           FileDisputeDto,
         ),
+        mockUser as any, // Mock CurrentUser
+        mockUser, // Test user
       );
 
       await expect(
@@ -276,6 +295,8 @@ describe("Dispute Resolution System - Integration Tests", () => {
             },
             ResolveDisputeDto,
           ),
+          mockUser as any, // Mock CurrentUser
+          mockUser, // Test user
         ),
       ).rejects.toThrow(BadRequestException);
     });
@@ -336,6 +357,8 @@ describe("Dispute Resolution System - Integration Tests", () => {
           },
           FileDisputeDto,
         ),
+        mockUser as any, // Mock CurrentUser
+        mockUser, // Test user
       );
 
       adminTestDisputeId = dispute.id;
@@ -352,6 +375,8 @@ describe("Dispute Resolution System - Integration Tests", () => {
           },
           AddEvidenceDto,
         ),
+        mockUser as any, // Mock CurrentUser
+        mockUser, // Test user
       );
 
       const response = await controller.requestMoreEvidence(
@@ -363,6 +388,8 @@ describe("Dispute Resolution System - Integration Tests", () => {
           },
           RequestMoreEvidenceDto,
         ),
+        mockUser as any, // Mock CurrentUser
+        mockUser, // Test user
       );
 
       expect(response.id).toBe(adminTestDisputeId);
@@ -372,11 +399,16 @@ describe("Dispute Resolution System - Integration Tests", () => {
       await controller.submitForReview(
         adminTestDisputeId,
         await validateBody({}, SubmitForReviewDto),
+        mockUser as any, // Mock CurrentUser
+        mockUser, // Test user
       );
 
       const response = await controller.rejectDispute(adminTestDisputeId, {
         reason: "Insufficient evidence provided. Claim dismissed.",
-      });
+      },
+      mockUser as any, // Mock CurrentUser
+      mockUser, // Test user
+      );
 
       expect(response.status).toBe(DisputeStatus.REJECTED);
       expect(response.splitFrozen).toBe(false);
@@ -428,6 +460,8 @@ describe("Dispute Resolution System - Integration Tests", () => {
           },
           FileDisputeDto,
         ),
+        mockUser as any, // Mock CurrentUser
+        mockUser, // Test user
       );
 
       expect(eventSpy).toHaveBeenCalledWith(

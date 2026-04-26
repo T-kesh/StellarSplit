@@ -22,7 +22,11 @@ const ACCEPT = {
 export interface ReceiptUploadProps {
   /** Called with array of processed files (images compressed, PDFs as-is) */
   onFilesChange?: (files: File[]) => void;
-  /** Called when user submits manual entry instead of uploading */
+  /**
+   * Called when the user submits manual totals instead of a file upload.
+   * OCR / extraction is not performed here; the parent receipt flow applies the
+   * configured receipt OCR provider when continuing.
+   */
   onManualEntry?: (data: ManualEntryData) => void;
   /** Called on validation or processing errors */
   onError?: (error: Error) => void;
@@ -36,6 +40,10 @@ function generateId() {
   return `receipt-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
+/**
+ * File dropzone and optional manual amount entry. Compression and previews are local;
+ * structured OCR runs in the parent flow via the receipt OCR provider.
+ */
 export function ReceiptUpload({
   onFilesChange,
   onManualEntry,

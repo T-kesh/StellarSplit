@@ -29,7 +29,7 @@ fn test_swap_failure_event_emitted() {
     let res = client.try_execute_path_payment(&caller, &split_id, &path, &amount, &0u32);
     assert!(res.is_err());
 
-    // Check that swap_fail event was emitted
+    // Check that swap_err event was emitted (see events::emit_swap_failed; topic is swap_err for symbol limit)
     let events = env.events().all();
     let found = events.iter().any(|e| {
         let (addr, topics, data) = e;
@@ -37,7 +37,7 @@ fn test_swap_failure_event_emitted() {
             return false;
         }
 
-        let target_symbol = soroban_sdk::symbol_short!("swap_fail");
+        let target_symbol = soroban_sdk::symbol_short!("swap_err");
         let mut topic_found = false;
         for t in topics.iter() {
             if let Ok(sym) = Symbol::try_from_val(&env, &t) {
@@ -55,7 +55,7 @@ fn test_swap_failure_event_emitted() {
         }
         false
     });
-    assert!(found, "swap_fail event should be emitted on swap failure");
+    assert!(found, "swap_err event should be emitted on swap failure");
 }
 
 extern crate std;
@@ -127,6 +127,7 @@ fn test_double_initialize_fails() {
     client.initialize(&admin);
     let res = client.try_initialize(&admin);
     assert!(res.is_err());
+    assert_eq!(res.err().unwrap(), Error::AlreadyInitialized);
 }
 
 // ========== Path finding ==========
@@ -259,6 +260,7 @@ fn test_execute_path_payment_invalid_amount() {
     let split_id = String::from_str(&env, "split-1");
     let res = client.try_execute_path_payment(&caller, &split_id, &path, &0i128, &100u32);
     assert!(res.is_err());
+    assert_eq!(res.err().unwrap(), Error::InvalidAmount);
 }
 
 #[test]
@@ -271,31 +273,25 @@ fn test_execute_path_payment_empty_path() {
     let split_id = String::from_str(&env, "split-1");
     let res = client.try_execute_path_payment(&caller, &split_id, &path, &100i128, &100u32);
     assert!(res.is_err());
+    assert_eq!(res.err().unwrap(), Error::InvalidPath);
 }
 
 // ========== Slippage (simulated with rates) ==========
 
 #[test]
-fn test_slippage_protection_single_hop() {
-    let (env, admin, token_a, token_b, _contract_id, client, _token_client, stellar_token) =
-        setup_with_tokens();
+fn test_execute_path_payment_path_too_long() {
+    let (env, admin, _token_a, _token_b, _contract_id, client, _, _) = setup_with_tokens();
     client.initialize(&admin);
-    client.set_rate(
-        &Asset(token_a.clone()),
-        &Asset(token_b.clone()),
-        &10_000_000,
-    );
-    stellar_token.mint(&Address::generate(&env), &1000_0000000i128);
     let caller = Address::generate(&env);
     env.mock_all_auths();
-    stellar_token.mint(&caller, &500_0000000i128);
     let mut path = Vec::new(&env);
-    path.push_back(Asset(token_a.clone()));
-    path.push_back(Asset(token_b.clone()));
-    let split_id = String::from_str(&env, "split-1");
-    let amount = 100_0000000i128;
-    let res = client.try_execute_path_payment(&caller, &split_id, &path, &amount, &0u32);
+    for _ in 0..7 {
+        path.push_back(Asset(Address::generate(&env)));
+    }
+    let split_id = String::from_str(&env, "split-long-path");
+    let res = client.try_execute_path_payment(&caller, &split_id, &path, &100i128, &100u32);
     assert!(res.is_err());
+    assert_eq!(res.err().unwrap(), Error::InvalidPath);
 }
 
 // ========== Admin: set_swap_router ==========

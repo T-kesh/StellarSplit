@@ -1,3 +1,8 @@
+/**
+ * Pure OCR simulation and manual-line helpers. Call sites that need real upload
+ * + backend polling or mode selection should go through `receiptOcrProvider`
+ * (`createReceiptOcrProvider` / `receiptOcrStrategyFromEnv`).
+ */
 import type { ParsedItem } from '../components/Receipt';
 import type { ManualEntryData } from '../components/ReceiptUpload';
 

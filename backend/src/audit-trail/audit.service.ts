@@ -1,8 +1,8 @@
 // Audit service for recording and querying audit events
-import { Injectable, Logger } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Between, Like, In } from 'typeorm';
-import { v4 as uuidv4 } from 'uuid';
+import { Injectable, Logger } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository, Between } from "typeorm";
+import { v4 as uuidv4 } from "uuid";
 import {
   AuditEvent,
   AuditAction,
@@ -10,7 +10,7 @@ import {
   AuditSeverity,
   AuditQueryFilters,
   AuditQueryResult,
-} from './audit-event.entity';
+} from "./audit-event.entity";
 
 @Injectable()
 export class AuditService {
@@ -45,7 +45,25 @@ export class AuditService {
     reason?: string;
     severity?: AuditSeverity;
     metadata?: Record<string, unknown>;
+    deduplicationKey?: string;
   }): Promise<AuditEvent> {
+    if (params.deduplicationKey) {
+      const existing = await this.auditRepository.findOne({
+        where: {
+          action: params.action,
+          resourceType: params.resourceType,
+          resourceId: params.resourceId,
+          metadata: { deduplicationKey: params.deduplicationKey },
+        },
+      });
+
+      if (existing) {
+        this.logger.debug(
+          `Duplicate audit event suppressed: ${params.action} (${params.deduplicationKey})`,
+        );
+        return existing;
+      }
+    }
     const event = this.auditRepository.create({
       id: uuidv4(),
       ...params,
@@ -53,7 +71,7 @@ export class AuditService {
     });
 
     const saved = await this.auditRepository.save(event);
-    
+
     this.logger.debug(`Audit event logged: ${params.action}`, {
       resourceType: params.resourceType,
       resourceId: params.resourceId,
@@ -95,14 +113,18 @@ export class AuditService {
     actorIp?: string;
     previousState?: Record<string, unknown>;
     newState?: Record<string, unknown>;
+    metadata?: Record<string, unknown>;
     description?: string;
     reason?: string;
     severity?: AuditSeverity;
+    deduplicationKey?: string;
   }): Promise<AuditEvent> {
     return this.logEvent({
       ...params,
       resourceId: params.disputeId,
       resourceType: AuditResourceType.DISPUTE,
+      metadata: params.metadata,
+      deduplicationKey: params.deduplicationKey,
     });
   }
 
@@ -142,9 +164,10 @@ export class AuditService {
       ...params,
       resourceId: params.receiptId,
       resourceType: AuditResourceType.RECEIPT,
-      severity: params.action === AuditAction.RECEIPT_DELETED 
-        ? AuditSeverity.WARNING 
-        : AuditSeverity.INFO,
+      severity:
+        params.action === AuditAction.RECEIPT_DELETED
+          ? AuditSeverity.WARNING
+          : AuditSeverity.INFO,
     });
   }
 
@@ -179,64 +202,64 @@ export class AuditService {
     limit: number = 20,
   ): Promise<AuditQueryResult> {
     const queryBuilder = this.auditRepository
-      .createQueryBuilder('audit')
-      .orderBy('audit.timestamp', 'DESC')
+      .createQueryBuilder("audit")
+      .orderBy("audit.timestamp", "DESC")
       .skip((page - 1) * limit)
       .take(limit);
 
     // Apply filters
     if (filters.action) {
       if (Array.isArray(filters.action)) {
-        queryBuilder.andWhere('audit.action IN (:...actions)', {
+        queryBuilder.andWhere("audit.action IN (:...actions)", {
           actions: filters.action,
         });
       } else {
-        queryBuilder.andWhere('audit.action = :action', {
+        queryBuilder.andWhere("audit.action = :action", {
           action: filters.action,
         });
       }
     }
 
     if (filters.resourceType) {
-      queryBuilder.andWhere('audit.resourceType = :resourceType', {
+      queryBuilder.andWhere("audit.resourceType = :resourceType", {
         resourceType: filters.resourceType,
       });
     }
 
     if (filters.resourceId) {
-      queryBuilder.andWhere('audit.resourceId = :resourceId', {
+      queryBuilder.andWhere("audit.resourceId = :resourceId", {
         resourceId: filters.resourceId,
       });
     }
 
     if (filters.actorId) {
-      queryBuilder.andWhere('audit.actorId = :actorId', {
+      queryBuilder.andWhere("audit.actorId = :actorId", {
         actorId: filters.actorId,
       });
     }
 
     if (filters.severity) {
-      queryBuilder.andWhere('audit.severity = :severity', {
+      queryBuilder.andWhere("audit.severity = :severity", {
         severity: filters.severity,
       });
     }
 
     if (filters.dateFrom && filters.dateTo) {
-      queryBuilder.andWhere('audit.timestamp BETWEEN :dateFrom AND :dateTo', {
+      queryBuilder.andWhere("audit.timestamp BETWEEN :dateFrom AND :dateTo", {
         dateFrom: filters.dateFrom,
         dateTo: filters.dateTo,
       });
     }
 
     if (filters.reviewed !== undefined) {
-      queryBuilder.andWhere('audit.reviewed = :reviewed', {
+      queryBuilder.andWhere("audit.reviewed = :reviewed", {
         reviewed: filters.reviewed,
       });
     }
 
     if (filters.search) {
       queryBuilder.andWhere(
-        '(audit.description ILIKE :search OR audit.resourceId ILIKE :search)',
+        "(audit.description ILIKE :search OR audit.resourceId ILIKE :search)",
         { search: `%${filters.search}%` },
       );
     }
@@ -269,7 +292,7 @@ export class AuditService {
         resourceId,
       },
       order: {
-        timestamp: 'DESC',
+        timestamp: "DESC",
       },
     });
   }
@@ -315,17 +338,14 @@ export class AuditService {
   /**
    * Get critical events for a time period
    */
-  async getCriticalEvents(
-    dateFrom: Date,
-    dateTo: Date,
-  ): Promise<AuditEvent[]> {
+  async getCriticalEvents(dateFrom: Date, dateTo: Date): Promise<AuditEvent[]> {
     return this.auditRepository.find({
       where: {
         severity: AuditSeverity.CRITICAL,
         timestamp: Between(dateFrom, dateTo),
       },
       order: {
-        timestamp: 'DESC',
+        timestamp: "DESC",
       },
     });
   }

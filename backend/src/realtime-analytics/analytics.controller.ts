@@ -69,9 +69,9 @@ class QueryTrendsDto {
 }
 
 class HealthStatusDto {
-  operational: boolean;
-  features: Record<string, boolean>;
-  timestamp: string;
+  operational!: boolean;
+  features!: Record<string, boolean>;
+  timestamp!: string;
 }
 
 @ApiTags('Analytics')
@@ -103,7 +103,7 @@ export class AnalyticsController {
   @ApiQuery({ name: 'dateTo', required: false, type: String })
   @ApiQuery({ name: 'eventType', required: false, type: String })
   @ApiResponse({ status: HttpStatus.OK, description: 'Metrics data' })
-  async queryMetrics(@Query() query: QueryMetricsDto): Promise<Record<string, unknown>> {
+  async queryMetrics(@Query() query: QueryMetricsDto): Promise<unknown> {
     const dateFrom = query.dateFrom ? new Date(query.dateFrom) : new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
     const dateTo = query.dateTo ? new Date(query.dateTo) : new Date();
 
@@ -117,7 +117,7 @@ export class AnalyticsController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Query funnel analysis' })
   @ApiResponse({ status: HttpStatus.OK, description: 'Funnel conversion data' })
-  async queryFunnel(@Body() query: QueryFunnelDto): Promise<Record<string, unknown>> {
+  async queryFunnel(@Body() query: QueryFunnelDto): Promise<unknown> {
     const eventTypes = query.eventTypes || [
       AnalyticsEventType.USER_REGISTERED,
       AnalyticsEventType.SPLIT_CREATED,
@@ -140,7 +140,7 @@ export class AnalyticsController {
   @ApiQuery({ name: 'startDate', required: false, type: String })
   @ApiQuery({ name: 'periods', required: false, type: Number })
   @ApiResponse({ status: HttpStatus.OK, description: 'Retention cohort data' })
-  async queryRetention(@Query() query: QueryRetentionDto): Promise<Record<string, unknown>> {
+  async queryRetention(@Query() query: QueryRetentionDto): Promise<unknown> {
     const eventType = query.eventType || AnalyticsEventType.USER_REGISTERED;
     const startDate = query.startDate ? new Date(query.startDate) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
     const periods = query.periods || 7;
@@ -158,7 +158,7 @@ export class AnalyticsController {
   @ApiQuery({ name: 'dateTo', required: false, type: String })
   @ApiQuery({ name: 'interval', required: false, enum: ['hour', 'day', 'week', 'month'] })
   @ApiResponse({ status: HttpStatus.OK, description: 'Time series data' })
-  async queryTrends(@Query() query: QueryTrendsDto): Promise<Record<string, unknown>> {
+  async queryTrends(@Query() query: QueryTrendsDto): Promise<unknown> {
     const eventTypes = query.eventTypes || [AnalyticsEventType.SPLIT_CREATED];
     const dateFrom = query.dateFrom ? new Date(query.dateFrom) : new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
     const dateTo = query.dateTo ? new Date(query.dateTo) : new Date();
@@ -174,7 +174,7 @@ export class AnalyticsController {
   @ApiOperation({ summary: 'Get daily summary for dashboard' })
   @ApiQuery({ name: 'date', required: false, type: String })
   @ApiResponse({ status: HttpStatus.OK, description: 'Daily summary' })
-  async getDailySummary(@Query('date') date?: string): Promise<Record<string, unknown>> {
+  async getDailySummary(@Query('date') date?: string): Promise<unknown> {
     const targetDate = date ? new Date(date) : new Date();
     return this.analyticsIngest.getDailyMetrics(targetDate);
   }

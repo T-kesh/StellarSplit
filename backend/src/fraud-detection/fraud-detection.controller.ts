@@ -14,6 +14,10 @@ import { Repository } from "typeorm";
 
 import { FraudDetectionService } from "./fraud-detection.service";
 import { FraudAlert, AlertStatus } from "./entities/fraud-alert.entity";
+import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
+import { AuthorizationGuard } from "../auth/guards/authorization.guard";
+import { RequirePermissions } from "../auth/decorators/permissions.decorator";
+import { Permissions } from "../auth/decorators/permissions.decorator";
 import {
   AnalyzeSplitRequestDto,
   AnalyzePaymentRequestDto,
@@ -22,6 +26,7 @@ import {
 } from "./dto/analyze-split.dto";
 
 @Controller("fraud")
+@UseGuards(JwtAuthGuard, AuthorizationGuard)
 export class FraudDetectionController {
   constructor(
     private readonly fraudDetectionService: FraudDetectionService,
@@ -33,6 +38,7 @@ export class FraudDetectionController {
    * Get all fraud alerts
    */
   @Get("alerts")
+  @RequirePermissions(Permissions.CAN_READ_FRAUD_ALERTS)
   async getAlerts(
     @Query("status") status?: AlertStatus,
     @Query("page") page: number = 1,
@@ -45,6 +51,7 @@ export class FraudDetectionController {
    * Get a single alert
    */
   @Get("alerts/:id")
+  @RequirePermissions(Permissions.CAN_READ_SPLIT)
   async getAlert(@Param("id") id: string) {
     const alert = await this.fraudDetectionService.getAlert(id);
     if (!alert) {
@@ -57,6 +64,7 @@ export class FraudDetectionController {
    * Resolve a fraud alert
    */
   @Post("alerts/:id/resolve")
+  @RequirePermissions(Permissions.CAN_UPDATE_SPLIT)
   @HttpCode(HttpStatus.OK)
   async resolveAlert(
     @Param("id") id: string,
@@ -70,6 +78,7 @@ export class FraudDetectionController {
    * Get analysis for a specific split
    */
   @Get("splits/:id/analysis")
+  @RequirePermissions(Permissions.CAN_READ_SPLIT)
   async getSplitAnalysis(@Param("id") id: string) {
     return this.fraudDetectionService.getSplitAnalysis(id);
   }
@@ -78,6 +87,7 @@ export class FraudDetectionController {
    * Get fraud detection statistics
    */
   @Get("stats")
+  @RequirePermissions(Permissions.CAN_READ_SPLIT)
   async getStats() {
     return this.fraudDetectionService.getStats();
   }

@@ -1,12 +1,9 @@
 use soroban_sdk::{contracttype, Address, Env, String};
 
 use crate::types::Split;
-use soroban_sdk::{contracttype, Address, Env, String};
 
 const LEDGER_TTL_PERSISTENT: u32 = 31_536_000;
 const LEDGER_TTL_THRESHOLD: u32 = 86_400;
-
-use crate::types::Split;
 
 #[contracttype]
 #[derive(Clone)]

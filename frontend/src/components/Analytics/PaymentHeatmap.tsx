@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import type { HeatmapCell } from "../../types/analytics";
-import { useTheme } from "../ThemeContex";
+import { useTheme } from "../ThemeContext";
 
 interface PaymentHeatmapProps {
   data: HeatmapCell[];

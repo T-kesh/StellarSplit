@@ -1,4 +1,4 @@
-import { Processor, Process } from "@nestjs/bull";
+import { Processor, Process, OnQueueFailed } from "@nestjs/bull";
 import { Job } from "bull";
 import { Injectable, Logger } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
@@ -9,6 +9,7 @@ import * as fs from "fs";
 import * as path from "path";
 import { ConfigService } from "@nestjs/config";
 import { streamQueryToCsv } from "./stream.helper";
+import { logJobFailure } from "../common/queue-job-policy";
 
 @Processor("analytics-export")
 @Injectable()
@@ -261,7 +262,7 @@ export class AnalyticsProcessor {
         report.fileName = fileName;
         try {
           await fs.promises.unlink(filePath);
-        } catch (_) {}
+        } catch {}
 
         await this.reportsRepository.save(report);
         this.logger.debug(`Export uploaded to s3://${bucket}/${key}`);
@@ -274,7 +275,7 @@ export class AnalyticsProcessor {
         this.logger.debug(`Export completed: ${filePath}`);
       }
     } catch (err: any) {
-      this.logger.error("Export failed", err);
+      logJobFailure(this.logger, job, err, { context: 'analytics-export' });
       report.status = "failed";
       report.error = err.message;
       await this.reportsRepository.save(report);
@@ -383,5 +384,27 @@ export class AnalyticsProcessor {
       return '"' + value.replace(/"/g, '""') + '"';
     }
     return value;
+  }
+
+  /**
+   * Dead-letter handler: fires when the job has exhausted all retries.
+   * The queue module registers the dead-letter queue; this hook ensures
+   * we persist a final failure marker on the report row.
+   */
+  @OnQueueFailed()
+  async onFailed(job: Job, err: Error) {
+    logJobFailure(this.logger, job, err, { context: 'analytics-export-dead-letter' });
+
+    const { reportId } = job.data as any;
+    if (reportId) {
+      try {
+        await this.reportsRepository.update(reportId, {
+          status: "failed",
+          error: err.message ?? String(err),
+        });
+      } catch {
+        // best effort – the DB may be the cause of the failure
+      }
+    }
   }
 }

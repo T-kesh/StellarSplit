@@ -12,59 +12,26 @@ import { PaymentBatchProcessor } from "./processors/payment-batch.processor";
 import { ScheduledBatchProcessor } from "./processors/scheduled-batch.processor";
 import { BatchProgressService } from "./batch-progress.service";
 import { BatchEventsService } from "./batch-events.service";
+import { PaymentsModule } from "../payments/payments.module";
+import { QueueJobPolicy, JobPolicyTier } from "../common/queue-job-policy";
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([BatchJob, BatchOperation]),
-    BullModule.registerQueueAsync(
-      {
-        name: "batch_splits",
-        imports: [ConfigModule],
-        useFactory: (configService: ConfigService) => ({
-          defaultJobOptions: {
-            attempts: configService.get<number>("BATCH_RETRY_ATTEMPTS", 5),
-            backoff: {
-              type: "exponential",
-              delay: configService.get<number>("BATCH_RETRY_DELAY_MS", 2000),
-            },
-            removeOnComplete: false,
-            removeOnFail: false,
-          },
-        }),
-        inject: [ConfigService],
-      },
-      {
-        name: "batch_payments",
-        imports: [ConfigModule],
-        useFactory: (configService: ConfigService) => ({
-          defaultJobOptions: {
-            attempts: configService.get<number>("BATCH_RETRY_ATTEMPTS", 5),
-            backoff: {
-              type: "exponential",
-              delay: configService.get<number>("BATCH_RETRY_DELAY_MS", 2000),
-            },
-            removeOnComplete: false,
-            removeOnFail: false,
-          },
-        }),
-        inject: [ConfigService],
-      },
-      {
-        name: "batch_scheduled",
-        imports: [ConfigModule],
-        useFactory: (configService: ConfigService) => ({
-          defaultJobOptions: {
-            attempts: 3,
-            backoff: {
-              type: "fixed",
-              delay: 5000,
-            },
-            removeOnComplete: true,
-            removeOnFail: false,
-          },
-        }),
-        inject: [ConfigService],
-      },
+    PaymentsModule,
+    BullModule.registerQueue(
+      QueueJobPolicy.forQueue('batch_splits', JobPolicyTier.CRITICAL, {
+        removeOnComplete: false,
+        removeOnFail: false,
+      }),
+      QueueJobPolicy.forQueue('batch_payments', JobPolicyTier.CRITICAL, {
+        removeOnComplete: false,
+        removeOnFail: false,
+      }),
+      QueueJobPolicy.forQueue('batch_scheduled', JobPolicyTier.STANDARD, {
+        removeOnComplete: true,
+        removeOnFail: false,
+      }),
     ),
   ],
   controllers: [BatchController],

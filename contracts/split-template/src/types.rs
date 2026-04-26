@@ -57,4 +57,6 @@ pub enum Error {
     InvalidShares = 3,
     /// Template version is incompatible with the current contract
     IncompatibleVersion = 4,
+    /// A template with the same name already exists for this creator
+    DuplicateName = 5,
 }

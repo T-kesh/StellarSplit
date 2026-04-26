@@ -1,8 +1,12 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { NotFoundException } from '@nestjs/common';
+import { CanActivate, NotFoundException } from '@nestjs/common';
 import { ProfileController } from './profile.controller';
 import { ProfileService } from './profile.service';
 import { UserProfile, DefaultSplitType } from './profile.entity';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { ProfilePolicyGuard } from './profile-policy.guard';
+
+const allowAllGuard: CanActivate = { canActivate: () => true };
 
 describe('ProfileController', () => {
   let controller: ProfileController;
@@ -12,6 +16,7 @@ describe('ProfileController', () => {
   const mockProfile: UserProfile = {
     walletAddress,
     displayName: 'Alice',
+    email: null,
     avatarUrl: null,
     preferredCurrency: 'USD',
     defaultSplitType: DefaultSplitType.EQUAL,
@@ -39,7 +44,12 @@ describe('ProfileController', () => {
           useValue: mockProfileService,
         },
       ],
-    }).compile();
+    })
+      .overrideGuard(JwtAuthGuard)
+      .useValue(allowAllGuard)
+      .overrideGuard(ProfilePolicyGuard)
+      .useValue(allowAllGuard)
+      .compile();
 
     controller = module.get<ProfileController>(ProfileController);
     profileService = module.get<ProfileService>(ProfileService);
@@ -72,7 +82,10 @@ describe('ProfileController', () => {
         displayName: 'Alice Updated',
         preferredCurrency: 'EUR' as const,
       };
-      const result = await controller.update(walletAddress, dto);
+      const req = {
+        user: { walletAddress, id: 'user-id' },
+      };
+      const result = await controller.update(walletAddress, dto, req as any);
       expect(result).toEqual(mockProfile);
       expect(profileService.update).toHaveBeenCalledWith(walletAddress, dto);
     });

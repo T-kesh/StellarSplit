@@ -8,7 +8,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import type { SpendingTrend } from "../../types/analytics";
-import { useTheme } from "../ThemeContex";
+import { useTheme } from "../ThemeContext";
 
 interface SpendingChartProps {
   data: SpendingTrend[];

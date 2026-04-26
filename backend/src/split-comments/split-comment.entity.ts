@@ -1,6 +1,6 @@
-import { Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn } from "typeorm";
+import { Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
 
-@Entity ('split_comments')
+@Entity('split_comments')
 @Index(['splitId'])
 export class SplitComment {
   @PrimaryGeneratedColumn('uuid')

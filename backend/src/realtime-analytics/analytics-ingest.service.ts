@@ -254,7 +254,7 @@ export class AnalyticsIngestService implements OnModuleInit, OnModuleDestroy {
   /**
    * Query analytics data from ClickHouse
    */
-  async queryAnalytics(sql: string): Promise<unknown[]> {
+  async queryAnalytics(sql: string): Promise<unknown> {
     if (!this.features.clickhouse) {
       throw new Error('ClickHouse not available');
     }
@@ -267,7 +267,7 @@ export class AnalyticsIngestService implements OnModuleInit, OnModuleDestroy {
   /**
    * Get daily metrics summary
    */
-  async getDailyMetrics(date: Date): Promise<Record<string, unknown>> {
+  async getDailyMetrics(date: Date): Promise<unknown> {
     if (!this.features.clickhouse) {
       return this.getFallbackMetrics(date);
     }

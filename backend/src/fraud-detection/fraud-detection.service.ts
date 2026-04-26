@@ -320,16 +320,10 @@ export class FraudDetectionService {
       where: { status: AlertStatus.FALSE_POSITIVE },
     });
 
-    // Calculate accuracy
-    const reviewed = await this.fraudAlertRepository.count({
-      where: [{ status: AlertStatus.RESOLVED }, { status: AlertStatus.FALSE_POSITIVE }],
-    });
-
-    const truePositives = await this.fraudAlertRepository.count({
-      where: { is_true_positive: true },
-    });
-
-    const accuracy = reviewed > 0 ? (truePositives + falsePositives) / reviewed : 0;
+    // Calculate accuracy as precision: true positives / (true positives + false positives)
+    const reviewed = resolved + falsePositives;
+    const truePositives = resolved;
+    const accuracy = reviewed > 0 ? truePositives / reviewed : 0;
 
     return {
       totalAlerts: total,
@@ -405,3 +399,5 @@ export class FraudDetectionService {
     return recommendations;
   }
 }
+
+export { AnalyzePaymentRequestDto } from "./dto/analyze-split.dto";

@@ -284,7 +284,7 @@ export class AnalyticsService {
       // Persist fallback id back to DB if possible
       try {
         await this.reportsRepository.save(saved);
-      } catch (err) {
+      } catch {
         // ignore -- best effort
       }
     }

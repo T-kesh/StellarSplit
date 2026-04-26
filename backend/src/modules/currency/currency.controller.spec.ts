@@ -7,7 +7,7 @@ describe('CurrencyController', () => {
   let service: CurrencyService;
 
   const mockCurrencyService = {
-    getExchangeRates: jest.fn(),
+    getRates: jest.fn(),
     convertCurrency: jest.fn(),
     getSupportedCurrencies: jest.fn(),
     formatCurrency: jest.fn(),
@@ -36,19 +36,28 @@ describe('CurrencyController', () => {
   describe('getRates', () => {
     it('should return exchange rates', async () => {
       const expectedRates = {
-        USD: 1,
-        EUR: 0.85,
-        GBP: 0.73,
-        XLM: 0.22,
-        USDC: 1.00,
+        base: 'USD',
+        rates: {
+          EUR: 0.85,
+        },
+        metadata: {
+          EUR: {
+            source: 'ExchangeRateAPI',
+            stale: false,
+            cached: false,
+            fetchedAt: '2026-03-29T10:00:00.000Z',
+            expiresAt: '2026-03-29T10:05:00.000Z',
+            fallbackReason: null,
+          },
+        },
       };
 
-      mockCurrencyService.getExchangeRates.mockResolvedValue(expectedRates);
+      mockCurrencyService.getRates.mockResolvedValue(expectedRates);
 
       const result = await controller.getRates();
 
       expect(result).toEqual(expectedRates);
-      expect(service.getExchangeRates).toHaveBeenCalled();
+      expect(service.getRates).toHaveBeenCalledWith('USD', undefined);
     });
   });
 
@@ -61,10 +70,19 @@ describe('CurrencyController', () => {
       };
 
       const expectedResult = {
-        amount: 85,
+        amount: 100,
+        convertedAmount: 85,
         rate: 0.85,
         from: 'USD',
         to: 'EUR',
+        metadata: {
+          source: 'ExchangeRateAPI',
+          stale: false,
+          cached: false,
+          fetchedAt: '2026-03-29T10:00:00.000Z',
+          expiresAt: '2026-03-29T10:05:00.000Z',
+          fallbackReason: null,
+        },
       };
 
       mockCurrencyService.convertCurrency.mockResolvedValue(expectedResult);
@@ -80,7 +98,7 @@ describe('CurrencyController', () => {
     it('should return supported currencies', async () => {
       const expectedCurrencies = ['USD', 'EUR', 'GBP', 'XLM', 'USDC'];
 
-      mockCurrencyService.getSupportedCurrencies.mockResolvedValue(expectedCurrencies);
+      mockCurrencyService.getSupportedCurrencies.mockReturnValue(expectedCurrencies);
 
       const result = await controller.getSupportedCurrencies();
 

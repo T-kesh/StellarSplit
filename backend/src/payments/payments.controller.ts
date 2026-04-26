@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Get,
+  Headers,
   Logger,
   Param,
   Post,
@@ -10,6 +11,7 @@ import {
   UseInterceptors,
   ValidationPipe,
 } from "@nestjs/common";
+import { PaymentRequestContext } from "./payment-request-context";
 import {
   Permissions,
   RequirePermissions,
@@ -36,24 +38,26 @@ export class PaymentsController {
   @RequirePermissions(Permissions.CAN_CREATE_PAYMENT)
   async submitPayment(
     @Body(ValidationPipe) submitPaymentDto: SubmitPaymentDto,
+    @Headers("idempotency-key") idempotencyKeyHeader?: string,
   ) {
     this.logger.log(
       `Received payment submission: ${JSON.stringify(submitPaymentDto)}`,
     );
 
-    const {
-      splitId,
-      participantId,
-      stellarTxHash,
-      idempotencyKey,
+    const { splitId, participantId, stellarTxHash, externalReference } = submitPaymentDto;
+
+    // Idempotency key comes exclusively from the header — the DTO no longer
+    // carries it to prevent mismatched-source replay semantics (issue #369).
+    const context: PaymentRequestContext = {
+      idempotencyKey: idempotencyKeyHeader,
       externalReference,
-    } = submitPaymentDto;
+    };
+
     return await this.paymentsService.submitPayment(
       splitId,
       participantId,
       stellarTxHash,
-      idempotencyKey,
-      externalReference,
+      context,
     );
   }
 

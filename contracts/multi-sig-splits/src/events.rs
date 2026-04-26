@@ -91,3 +91,24 @@ pub fn emit_governance_changed(
         (split_id.clone(), change_type.clone(), actor.clone()),
     );
 }
+
+/// Emit execution intent recorded event
+pub fn emit_execution_intent_recorded(
+    env: &Env,
+    split_id: &String,
+    action: &String,
+    recorded_at: u64,
+) {
+    env.events().publish(
+        ("execution_intent_recorded", "split_id", "action", "recorded_at"),
+        (split_id.clone(), action.clone(), recorded_at),
+    );
+}
+
+/// Emit execution intent executed event
+pub fn emit_execution_intent_executed(env: &Env, split_id: &String, executed_at: u64) {
+    env.events().publish(
+        ("execution_intent_executed", "split_id", "executed_at"),
+        (split_id.clone(), executed_at),
+    );
+}

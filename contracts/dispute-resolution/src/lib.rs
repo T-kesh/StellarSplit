@@ -1,12 +1,15 @@
 #![no_std]
 
+mod action_adapter;
 mod errors;
+mod events;
 mod storage;
 mod types;
 
 #[cfg(test)]
 mod test;
 
+use action_adapter::{adapt_outcome, execute_action};
 use errors::Error;
 use soroban_sdk::{contract, contractimpl, vec, Address, Bytes, Env, IntoVal, String, Symbol, Val};
 use types::{Dispute, DisputeResult, DisputeStatus};
@@ -82,6 +85,8 @@ impl DisputeContract {
         storage::save_dispute(&env, &dispute);
         storage::add_to_list(&env, dispute_id.clone());
 
+        events::emit_dispute_raised(&env, &dispute_id, &dispute.split_id, &dispute.raiser);
+
         Ok(dispute_id)
     }
 
@@ -123,6 +128,8 @@ impl DisputeContract {
         dispute.voters.push_back(voter.clone());
         storage::record_vote(&env, &dispute_id, &voter);
         storage::save_dispute(&env, &dispute);
+
+        events::emit_vote_cast(&env, &dispute_id, &voter, support);
 
         Ok(())
     }
@@ -168,28 +175,21 @@ impl DisputeContract {
             return Err(Error::UnauthorizedResolver);
         }
 
-        // Drive the next step in the payment lifecycle by updating escrow settlement state.
-        // Upheld => dispute is valid => cancel/undo the escrow.
-        // Dismissed/Tied => dispute is invalid or tie => continue settlement by releasing funds.
-        if result == DisputeResult::UpheldForRaiser {
-            let reverse_sym = Symbol::new(&env, "reverse_split");
-            let reverse_args: soroban_sdk::Vec<Val> =
-                vec![&env, dispute.escrow_split_id.into_val(&env)];
-            env.invoke_contract::<()>(&dispute.escrow_contract, &reverse_sym, reverse_args);
-        } else {
-            let release_sym = Symbol::new(&env, "release_funds");
-            let release_args: soroban_sdk::Vec<Val> =
-                vec![&env, dispute.escrow_split_id.into_val(&env)];
-            env.invoke_contract::<()>(&dispute.escrow_contract, &release_sym, release_args);
-        }
+        // Drive the next step in the payment lifecycle via the action adapter.
+        let action = adapt_outcome(result)?;
+        execute_action(&env, action, &dispute.escrow_contract, dispute.escrow_split_id);
 
-        dispute.status = DisputeStatus::Resolved;
-        dispute.result = Some(match result {
+        let result_code = match result {
             DisputeResult::UpheldForRaiser => 0u32,
             DisputeResult::DismissedForRaiser => 1u32,
             DisputeResult::Tied => 2u32,
-        });
+        };
+
+        dispute.status = DisputeStatus::Resolved;
+        dispute.result = Some(result_code);
         storage::save_dispute(&env, &dispute);
+
+        events::emit_dispute_resolved(&env, &dispute_id, result_code);
 
         Ok(result)
     }

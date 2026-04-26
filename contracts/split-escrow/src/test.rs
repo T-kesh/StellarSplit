@@ -75,13 +75,12 @@ fn test_fee_deducted_and_sent_to_treasury_on_release() {
         &None,
         &false,
         &None,
-        &None,
     );
     client.deposit(&split_id, &participant, &10_000);
     client.release_funds(&split_id);
 
     assert_eq!(token_client.balance(&treasury), 250);
-    assert_eq!(token_client.balance(&creator), 9_750);
+    assert_eq!(token_client.balance(&creator), 1_000_000 + 9_750);
 
     let escrow = client.get_escrow(&split_id);
     assert_eq!(escrow.status, SplitStatus::Released);
@@ -105,9 +104,9 @@ fn test_admin_can_update_fee_and_treasury() {
         &String::from_str(&env, "A"),
         &1_000,
         &Map::new(&env),
+        &obligations_a,
         &None,
         &false,
-        &obligations_a,
         &None,
     );
     client.deposit(&split_a, &participant, &1_000);
@@ -126,6 +125,7 @@ fn test_admin_can_update_fee_and_treasury() {
         &String::from_str(&env, "B"),
         &2_000,
         &Map::new(&env),
+        &obligations_b,
         &None,
         &false,
         &None,
@@ -166,7 +166,6 @@ fn test_fees_collected_event_emitted() {
         &obligations,
         &None,
         &false,
-        &None,
         &None,
     );
     client.deposit(&split_id, &participant, &1_000);
@@ -216,8 +215,9 @@ fn test_upgrade_version_non_admin_fails() {
 #[test]
 fn test_partial_deposits() {
     let (env, client, _admin, creator, participant, token_client, _) = setup();
+    client.set_treasury(&Address::generate(&env));
     let p2 = Address::generate(&env);
-    let token_admin_client = TokenAdminClient::new(&env, token_client.address);
+    let token_admin_client = TokenAdminClient::new(&env, &token_client.address);
     token_admin_client.mint(&p2, &1_000_000);
 
     let mut obligations = Map::new(&env);
@@ -228,8 +228,10 @@ fn test_partial_deposits() {
         &creator,
         &String::from_str(&env, "Shared Bill"),
         &10_000,
+        &Map::new(&env),
         &obligations,
         &None,
+        &false,
         &None,
     );
 
@@ -255,14 +257,14 @@ fn test_partial_deposits() {
 
     client.release_funds(&split_id);
     assert_eq!(client.get_escrow(&split_id).status, SplitStatus::Released);
-    assert_eq!(token_client.balance(&creator), 10_000);
+    assert_eq!(token_client.balance(&creator), 1_000_000 + 10_000);
 }
 
 #[test]
 fn test_cancel_partial_refunds() {
     let (env, client, _admin, creator, participant, token_client, _) = setup();
     let p2 = Address::generate(&env);
-    let token_admin_client = TokenAdminClient::new(&env, token_client.address);
+    let token_admin_client = TokenAdminClient::new(&env, &token_client.address);
     token_admin_client.mint(&p2, &1_000_000);
 
     let mut obligations = Map::new(&env);
@@ -273,8 +275,10 @@ fn test_cancel_partial_refunds() {
         &creator,
         &String::from_str(&env, "Shared Bill"),
         &10_000,
+        &Map::new(&env),
         &obligations,
         &None,
+        &false,
         &None,
     );
 
@@ -305,12 +309,17 @@ fn test_upgrade_version_invalid_semver_fails() {
 fn test_toggle_whitelist_allows_creator_to_restrict_access() {
     let (env, client, _admin, creator, participant, _token_client, _token_admin) = setup();
 
+    let mut obligations = Map::new(&env);
+    obligations.set(participant.clone(), 2_000);
+
     let split_id = client.create_escrow(
         &creator,
         &String::from_str(&env, "Restricted"),
         &2_000,
+        &Map::new(&env),
+        &obligations,
         &None,
-        &None,
+        &false,
         &None,
     );
 
@@ -330,25 +339,32 @@ fn test_toggle_whitelist_allows_creator_to_restrict_access() {
 
 #[test]
 fn test_create_escrow_with_metadata_stores_correctly() {
-    let (env, client, _admin, creator, _participant, _token_client, _token_admin) = setup();
+    let (env, client, _admin, creator, participant, _token_client, _token_admin) = setup();
     let mut metadata = soroban_sdk::Map::new(&env);
     metadata.set(
         String::from_str(&env, "key"),
         String::from_str(&env, "value"),
     );
 
+    let mut obligations = Map::new(&env);
+    obligations.set(participant.clone(), 1_000);
+
     let split_id = client.create_escrow(
         &creator,
         &String::from_str(&env, "Metadata test"),
         &1_000,
+        &metadata,
+        &obligations,
         &None,
+        &false,
         &None,
-        &Some(metadata.clone()),
     );
 
     let escrow = client.get_escrow(&split_id);
     assert_eq!(escrow.metadata, metadata);
 }
+
+#[test]
 #[should_panic(expected = "HostError: Error(Contract, #11)")] // InvalidVersion
 fn test_initialize_invalid_version_fails() {
     let env = Env::default();
@@ -376,12 +392,15 @@ fn test_contract_upgraded_event_emitted() {
 
 #[test]
 fn test_default_max_participants_is_50() {
-    let (env, client, _admin, creator, _p, _tc, token_admin) = setup();
+    let (env, client, _admin, creator, participant, _tc, token_admin) = setup();
+    let mut obligations = Map::new(&env);
+    obligations.set(participant.clone(), 100);
     let escrow_id = client.create_escrow(
         &creator,
         &String::from_str(&env, "Cap default"),
         &100,
         &Map::new(&env),
+        &obligations,
         &None,
         &false,
         &None,
@@ -397,11 +416,14 @@ fn test_default_max_participants_is_50() {
 fn test_explicit_max_participants_stored_in_get_escrow() {
     let (env, client, _admin, creator, p1, _tc, _ta) = setup();
     let cap = 3u32;
+    let mut obligations = Map::new(&env);
+    obligations.set(p1.clone(), 300);
     let escrow_id = client.create_escrow(
         &creator,
         &String::from_str(&env, "Explicit cap"),
         &300,
         &Map::new(&env),
+        &obligations,
         &Some(cap),
         &false,
         &None,
@@ -421,11 +443,17 @@ fn test_deposit_rejected_when_participant_cap_exceeded() {
     token_admin.mint(&p2, &10_000);
     token_admin.mint(&p3, &10_000);
 
+    let mut obligations = Map::new(&env);
+    obligations.set(p1.clone(), 1_000);
+    obligations.set(p2.clone(), 1_000);
+    obligations.set(p3.clone(), 1_000);
+
     let escrow_id = client.create_escrow(
         &creator,
         &String::from_str(&env, "Two max"),
         &3_000,
         &Map::new(&env),
+        &obligations,
         &Some(2u32),
         &false,
         &None,
@@ -449,11 +477,15 @@ fn test_existing_participant_can_deposit_again_without_increasing_count() {
     // release_funds runs fee collection; treasury must be set even when fee bps is 0.
     client.set_treasury(&Address::generate(&env));
 
+    let mut obligations = Map::new(&env);
+    obligations.set(p1.clone(), 2_000);
+
     let escrow_id = client.create_escrow(
         &creator,
         &String::from_str(&env, "Repeat"),
         &2_000,
         &Map::new(&env),
+        &obligations,
         &Some(1u32),
         &false,
         &None,
@@ -469,13 +501,16 @@ fn test_existing_participant_can_deposit_again_without_increasing_count() {
 
 #[test]
 fn test_note_stored_on_create_and_get_note() {
-    let (env, client, _admin, creator, _p, _tc, _ta) = setup();
+    let (env, client, _admin, creator, participant, _tc, _ta) = setup();
     let text = "Dinner at Luigi's — Friday night";
+    let mut obligations = Map::new(&env);
+    obligations.set(participant.clone(), 100);
     let split_id = client.create_escrow(
         &creator,
         &String::from_str(&env, "Bill"),
         &100,
         &Map::new(&env),
+        &obligations,
         &None,
         &false,
         &Some(String::from_str(&env, text)),
@@ -492,11 +527,15 @@ fn test_creator_can_update_note_while_pending_and_ready() {
     let (env, client, _admin, creator, p1, _tc, _ta) = setup();
     client.set_treasury(&Address::generate(&env));
 
+    let mut obligations = Map::new(&env);
+    obligations.set(p1.clone(), 2_000);
+
     let split_id = client.create_escrow(
         &creator,
         &String::from_str(&env, "X"),
         &2_000,
         &Map::new(&env),
+        &obligations,
         &None,
         &false,
         &None,
@@ -519,27 +558,35 @@ fn test_creator_can_update_note_while_pending_and_ready() {
 
 #[test]
 fn test_note_over_128_bytes_rejected_on_create_and_set() {
-    let (env, client, _admin, creator, _p, _tc, _ta) = setup();
+    let (env, client, _admin, creator, participant, _tc, _ta) = setup();
     let bytes = [b'a'; 129];
     let long = String::from_str(&env, core::str::from_utf8(&bytes).unwrap());
     assert_eq!(long.len(), 129);
+
+    let mut obligations_try = Map::new(&env);
+    obligations_try.set(participant.clone(), 100);
 
     let res = client.try_create_escrow(
         &creator,
         &String::from_str(&env, "x"),
         &100,
         &Map::new(&env),
+        &obligations_try,
         &None,
         &false,
         &Some(long.clone()),
     );
     assert!(res.is_err());
 
+    let mut obligations_ok = Map::new(&env);
+    obligations_ok.set(participant.clone(), 100);
+
     let split_id = client.create_escrow(
         &creator,
         &String::from_str(&env, "ok"),
         &100,
         &Map::new(&env),
+        &obligations_ok,
         &None,
         &false,
         &None,
@@ -550,12 +597,15 @@ fn test_note_over_128_bytes_rejected_on_create_and_set() {
 
 #[test]
 fn test_note_updated_emits_event() {
-    let (env, client, _admin, creator, _p, _tc, _ta) = setup();
+    let (env, client, _admin, creator, participant, _tc, _ta) = setup();
+    let mut obligations = Map::new(&env);
+    obligations.set(participant.clone(), 100);
     let split_id = client.create_escrow(
         &creator,
         &String::from_str(&env, "E"),
         &100,
         &Map::new(&env),
+        &obligations,
         &None,
         &false,
         &None,
@@ -568,11 +618,14 @@ fn test_note_updated_emits_event() {
 #[test]
 fn test_cancel_split() {
     let (env, client, _admin, creator, participant, _tc, token_admin) = setup();
+    let mut obligations = Map::new(&env);
+    obligations.set(participant.clone(), 100);
     let split_id = client.create_escrow(
         &creator,
         &String::from_str(&env, "Cancel test"),
         &100,
         &Map::new(&env),
+        &obligations,
         &None,
         &false,
         &None,

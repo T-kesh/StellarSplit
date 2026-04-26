@@ -1,4 +1,4 @@
-import { Process, Processor } from '@nestjs/bull';
+import { Process, Processor, OnQueueFailed } from '@nestjs/bull';
 import { Logger } from '@nestjs/common';
 import { Job } from 'bull';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -6,7 +6,8 @@ import { Repository, In } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
 import * as firebaseAdmin from 'firebase-admin';
 import { DeviceRegistration } from './entities/device-registration.entity';
-import { NotificationPreference, NotificationEventType } from './entities/notification-preference.entity';
+import { NotificationEventType } from './entities/notification-preference.entity';
+import { logJobFailure } from '../common/queue-job-policy';
 
 @Processor('push_queue')
 export class PushNotificationProcessor {
@@ -16,8 +17,6 @@ export class PushNotificationProcessor {
   constructor(
     @InjectRepository(DeviceRegistration)
     private deviceRepo: Repository<DeviceRegistration>,
-    @InjectRepository(NotificationPreference)
-    private prefRepo: Repository<NotificationPreference>,
     private configService: ConfigService,
   ) {
     this.initializeFirebase();
@@ -49,23 +48,7 @@ export class PushNotificationProcessor {
     const { userId, eventType, title, body, data } = job.data;
     this.logger.debug(`Processing push notification for user ${userId} event ${eventType}`);
 
-    // 1. Check preferences
-    const pref = await this.prefRepo.findOne({
-      where: { userId, eventType },
-    });
-
-    if (pref && !pref.pushEnabled) {
-      this.logger.log(`Push disabled for user ${userId} event ${eventType}`);
-      return;
-    }
-
-    // 2. Check quiet hours
-    if (pref && this.isQuietHours(pref)) {
-      this.logger.log(`Quiet hours active for user ${userId}`);
-      return;
-    }
-
-    // 3. Get devices
+    // Get devices
     const devices = await this.deviceRepo.find({
       where: { userId, isActive: true },
     });
@@ -77,7 +60,7 @@ export class PushNotificationProcessor {
 
     const tokens = devices.map((d) => d.deviceToken);
 
-    // 4. Send via FCM
+    // Send via FCM
     if (!this.firebaseApp) {
         this.logger.warn('Firebase not initialized. Skipping notification send.');
         return;
@@ -129,34 +112,17 @@ export class PushNotificationProcessor {
       
       this.logger.log(`Sent push notification to ${response.successCount}/${tokens.length} devices for user ${userId}`);
     } catch (error) {
-        this.logger.error('Error sending multicast message', error);
+        logJobFailure(this.logger, job, error, { context: 'push-notification' });
         throw error; // Let Bull retry
     }
   }
 
-  private isQuietHours(pref: NotificationPreference): boolean {
-    if (!pref.quietHoursStart || !pref.quietHoursEnd) return false;
-
-    const now = new Date();
-    const userTime = pref.timezone 
-        ? new Date(now.toLocaleString('en-US', { timeZone: pref.timezone }))
-        : now;
-    
-    const currentHour = userTime.getHours();
-    const currentMinute = userTime.getMinutes();
-    const currentTimeVal = currentHour * 60 + currentMinute;
-
-    const [startH, startM] = pref.quietHoursStart.split(':').map(Number);
-    const startVal = startH * 60 + startM;
-
-    const [endH, endM] = pref.quietHoursEnd.split(':').map(Number);
-    const endVal = endH * 60 + endM;
-
-    if (startVal < endVal) {
-      return currentTimeVal >= startVal && currentTimeVal < endVal;
-    } else {
-      return currentTimeVal >= startVal || currentTimeVal < endVal;
-    }
+  /**
+   * Dead-letter handler: fires when the push notification job has exhausted all retries.
+   */
+  @OnQueueFailed()
+  onFailed(job: Job, err: Error) {
+    logJobFailure(this.logger, job, err, { context: 'push-notification-dead-letter' });
   }
 
   private async handleFailedTokens(tokens: string[]) {

@@ -1,4 +1,4 @@
-import { Process, Processor } from "@nestjs/bull";
+import { Process, Processor, OnQueueFailed } from "@nestjs/bull";
 import { Job } from "bull";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository, Between } from "typeorm";
@@ -13,10 +13,12 @@ import { PDFExporterService } from "./exporters/pdf-exporter.service";
 import { QBOExporterService } from "./exporters/qbo-exporter.service";
 import { JSONExporterService } from "./exporters/json-exporter.service";
 import { OFXExporterService } from "./exporters/ofx-exporter.service";
+import { ProfileService } from "../profile/profile.service";
 import { EmailService } from "../email/email.service";
 import { Logger } from "@nestjs/common";
 import * as fs from "fs";
 import * as path from "path";
+import { logJobFailure } from "../common/queue-job-policy";
 
 @Processor("compliance-export")
 export class ComplianceProcessor {
@@ -34,6 +36,7 @@ export class ComplianceProcessor {
     private jsonExporter: JSONExporterService,
     private ofxExporter: OFXExporterService,
     private emailService: EmailService,
+    private profileService: ProfileService,
   ) {
     if (!fs.existsSync(this.exportDir)) {
       fs.mkdirSync(this.exportDir);
@@ -99,7 +102,7 @@ export class ComplianceProcessor {
 
       await this.exportRepo.update(requestId, {
         status: ExportStatus.READY,
-        fileUrl: filePath, // Using local path for simplicity in this implementation
+        fileUrl: `http://localhost:3000/api/compliance/export/${requestId}/download`, // Secure download URL
         fileSize: fs.statSync(filePath).size,
         recordCount: splits.length,
         completedAt: new Date(),
@@ -107,22 +110,53 @@ export class ComplianceProcessor {
       });
 
       // Send email notification
-      // In a real app, we'd look up the user's email by wallet address
-      // For now, we'll assume a dummy email or use a placeholder
-      await this.emailService["emailQueue"].add("sendEmail", {
-        to: "user@example.com", // Placeholder
-        type: "export_ready",
-        context: {
-          requestId,
-          format: request.exportFormat,
-          downloadUrl: `http://localhost:3000/api/compliance/export/${requestId}/download`,
-        },
-      });
+      try {
+        const profile = await this.profileService.getByWalletAddress(request.userId);
+        const userEmail = profile.email || 'user@example.com'; // fallback
+        await this.emailService["emailQueue"].add("sendEmail", {
+          to: userEmail,
+          type: "export_ready",
+          context: {
+            requestId,
+            format: request.exportFormat,
+            downloadUrl: `http://localhost:3000/api/compliance/export/${requestId}/download`,
+          },
+        });
+      } catch (error) {
+        this.logger.error(`Failed to get user email for export ${requestId}:`, error);
+        // Fallback to placeholder
+        await this.emailService["emailQueue"].add("sendEmail", {
+          to: "user@example.com",
+          type: "export_ready",
+          context: {
+            requestId,
+            format: request.exportFormat,
+            downloadUrl: `http://localhost:3000/api/compliance/export/${requestId}/download`,
+          },
+        });
+      }
 
       this.logger.log(`Export ${requestId} completed successfully`);
     } catch (error) {
-      this.logger.error(`Export ${requestId} failed: ${error}`);
+      logJobFailure(this.logger, job, error, { context: 'compliance-export' });
       await this.exportRepo.update(requestId, { status: ExportStatus.FAILED });
+    }
+  }
+
+  /**
+   * Dead-letter handler: fires when the compliance export job has exhausted all retries.
+   */
+  @OnQueueFailed()
+  async onFailed(job: Job<{ requestId: string }>, err: Error) {
+    logJobFailure(this.logger, job, err, { context: 'compliance-export-dead-letter' });
+
+    const { requestId } = job.data;
+    if (requestId) {
+      try {
+        await this.exportRepo.update(requestId, { status: ExportStatus.FAILED });
+      } catch {
+        // best effort – the DB may be the cause of the failure
+      }
     }
   }
 }

@@ -13,8 +13,14 @@ export interface Member {
 export interface Group {
   id: string;
   name: string;
+  description?: string;
+  emoji: string;
+  accentColor: string;
   members: Member[];
-  createdAt: string;
+  totalSpent: number;
+  currency: string;
+  createdAt: Date;
+  lastActivityAt: Date;
 }
 
 export interface SplitRequest {
@@ -27,15 +33,6 @@ export interface SplitRequest {
 export interface ApiResponse<T> {
   data: T;
   error?: string;
-}
-  description?: string;
-  emoji: string;
-  accentColor: string;
-  members: Member[];
-  totalSpent: number;
-  currency: string;
-  createdAt: Date;
-  lastActivityAt: Date;
 }
 
 export interface Split {

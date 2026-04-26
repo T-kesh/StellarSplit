@@ -9,6 +9,8 @@
 use soroban_sdk::{contract, contractimpl, Address, Env, String, Vec};
 
 mod events;
+mod id;
+mod name_index;
 mod storage;
 mod types;
 mod utils;
@@ -64,6 +66,11 @@ impl SplitTemplateContract {
         // Validate shares based on split type
         Self::validate_shares(&env, split_type, &participants)?;
 
+        // Check for duplicate name for this creator
+        if name_index::has_template_with_name(&env, &creator, &name) {
+            return Err(Error::DuplicateName);
+        }
+
         // Generate deterministic template ID from creator + name + ledger time
         let template_id = Self::generate_template_id(&env, &creator, &name);
 
@@ -79,6 +86,9 @@ impl SplitTemplateContract {
 
         // Store the template
         storage::store_template(&env, &template);
+
+        // Store name mapping to prevent duplicates
+        name_index::store_name_mapping(&env, &creator, &template.name, template_id.clone());
 
         // Add to creator's index for efficient lookup
         storage::add_to_creator_index(&env, &creator, template_id.clone());
@@ -167,6 +177,20 @@ impl SplitTemplateContract {
         CURRENT_TEMPLATE_VERSION
     }
 
+    /// Get a template by creator and name.
+    ///
+    /// # Arguments
+    /// * `env` - The Soroban environment
+    /// * `creator` - The address of the template creator
+    /// * `name` - The human-readable name of the template
+    ///
+    /// # Returns
+    /// The template if found, or an error
+    pub fn get_template_by_name(env: Env, creator: Address, name: String) -> Result<Template, Error> {
+        let template_id = name_index::get_template_id_by_name(&env, &creator, &name).ok_or(Error::TemplateNotFound)?;
+        storage::get_template(&env, &template_id).ok_or(Error::TemplateNotFound)
+    }
+
     /// Check whether a given version is compatible with the current contract.
     ///
     /// Returns `true` when `version` equals `CURRENT_TEMPLATE_VERSION`.
@@ -182,12 +206,10 @@ impl SplitTemplateContract {
 
     /// Generate a deterministic template ID.
     ///
-    /// Creates a template ID from hash of creator address, name, and ledger timestamp.
+    /// Creates a template ID from hash of creator address, name, and ledger sequence.
     /// This ensures uniqueness even with same name from same creator at different times.
     fn generate_template_id(env: &Env, creator: &Address, name: &String) -> String {
-        // TODO: Use hash for production uniqueness
-        // For now, use name as simple ID
-        name.clone()
+        id::generate_template_id(env, creator, name)
     }
 
     /// Validate participant shares based on split type.

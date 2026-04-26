@@ -7,22 +7,15 @@ import { PushNotificationsController } from './push-notifications.controller';
 import { PushNotificationProcessor } from './push-notifications.processor';
 import { DeviceRegistration } from './entities/device-registration.entity';
 import { NotificationPreference } from './entities/notification-preference.entity';
+import { QueueJobPolicy, JobPolicyTier } from '../common/queue-job-policy';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([DeviceRegistration, NotificationPreference]),
     ScheduleModule.forRoot(),
-    BullModule.registerQueue({
-      name: 'push_queue',
-      defaultJobOptions: {
-        attempts: 3,
-        backoff: {
-          type: 'exponential',
-          delay: 1000,
-        },
-        removeOnComplete: true,
-      },
-    }),
+    BullModule.registerQueue(
+      QueueJobPolicy.forQueue('push_queue', JobPolicyTier.BEST_EFFORT),
+    ),
   ],
   controllers: [PushNotificationsController],
   providers: [PushNotificationsService, PushNotificationProcessor],

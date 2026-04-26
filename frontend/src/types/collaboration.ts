@@ -27,15 +27,15 @@ export interface ActivityEvent {
 
 export interface ConflictInfo {
   field: string;
-  localValue: any;
-  remoteValue: any;
+  localValue: unknown;
+  remoteValue: unknown;
   remoteUser: string;
   timestamp: Date;
 }
 
 export interface SplitUpdate {
   type: string;
-  payload: any;
+  payload: unknown;
   userId: string;
   timestamp: Date;
 }

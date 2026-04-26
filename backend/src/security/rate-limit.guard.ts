@@ -8,6 +8,7 @@ import {
 import { Reflector } from "@nestjs/core";
 import { ThrottlerStorage } from "@nestjs/throttler";
 import { Request } from "express";
+import { extractRequestIdentity } from "./request-identity.util";
 
 export const RATE_LIMIT_KEY = "rate_limit";
 
@@ -30,21 +31,21 @@ export class RateLimitGuard implements CanActivate {
     if (!config) return true;
 
     const req = context.switchToHttp().getRequest<Request>();
-    const wallet = req.user?.walletAddress || req.headers["x-wallet-address"];
+    const identity = extractRequestIdentity(req);
 
-    const key = `wallet:${wallet}:${handler.name}`;
+    const key = `rate:${identity}:${handler.name}`;
 
     const record = await this.storage.increment(
       key,
       config.ttl,
       config.limit,
       0,
-      "wallet"
+      "identity"
     );
 
     if (record.totalHits > config.limit) {
       throw new HttpException(
-        "Wallet rate limit exceeded",
+        "Rate limit exceeded",
         HttpStatus.TOO_MANY_REQUESTS
       );
     }

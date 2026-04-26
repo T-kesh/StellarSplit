@@ -446,6 +446,7 @@ describe('Frontend API contracts (integration)', () => {
     app.setGlobalPrefix('api');
 
     await app.init();
+    await app.listen(0, '127.0.0.1');
 
     swaggerDocument = SwaggerModule.createDocument(
       app,

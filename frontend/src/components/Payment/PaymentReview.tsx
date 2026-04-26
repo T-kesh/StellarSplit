@@ -1,5 +1,5 @@
 import React from "react";
-import { PaymentRequest } from "../../types/payment";
+import type { PaymentRequest } from "../../types/payment";
 
 interface Props {
   request: PaymentRequest;

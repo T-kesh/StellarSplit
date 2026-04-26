@@ -51,6 +51,24 @@ pub struct GovernanceInfo {
     pub threshold_percentage: u32,
 }
 
+/// Execution intent for a multi-signature split
+#[contracttype]
+#[derive(Clone, Debug)]
+pub struct ExecutionIntent {
+    /// Unique intent identifier (typically split_id)
+    pub intent_id: String,
+    /// The split being executed
+    pub split_id: String,
+    /// Description of the intended action
+    pub action: String,
+    /// Timestamp when intent was recorded
+    pub recorded_at: u64,
+    /// Timestamp when intent was executed (0 if not yet executed)
+    pub executed_at: u64,
+    /// Whether this intent has been executed
+    pub is_executed: bool,
+}
+
 /// Error types for the contract
 #[contracterror]
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]

@@ -1,18 +1,24 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import { createBrowserRouter } from "react-router-dom";
 import "./index.css";
 import HomePage from "./pages/Home";
 import RootLayout from "./layouts/RootLayout";
-import { WalletProvider } from "./hooks/use-wallet";
-import { ThemeProvider } from "./components/ThemeContex";
-import { CollaborationProvider } from "./components/Collaboration";
+import RouteErrorBoundary from "./components/routing/RouteErrorBoundary";
+import RoutePending from "./components/routing/RoutePending";
+import { bootstrapTheme } from "./utils/themeBootstrap";
 import "./i18n/config";
+import App from "./App";
+
+// Apply theme before hydration to prevent flash
+bootstrapTheme();
 
 const router = createBrowserRouter([
   {
     path: "/",
     element: <RootLayout />,
+    errorElement: <RouteErrorBoundary />,
+    hydrateFallbackElement: <RoutePending />,
     children: [
       { index: true, element: <HomePage /> },
       {
@@ -78,12 +84,6 @@ const router = createBrowserRouter([
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <ThemeProvider>
-      <WalletProvider>
-        <CollaborationProvider>
-          <RouterProvider router={router} />
-        </CollaborationProvider>
-      </WalletProvider>
-    </ThemeProvider>
+    <App router={router} />
   </StrictMode>,
 );

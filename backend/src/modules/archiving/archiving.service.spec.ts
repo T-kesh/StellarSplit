@@ -11,6 +11,7 @@ import { Payment } from '../../entities/payment.entity';
 import { User } from '../../entities/user.entity';
 import { DataSource, LessThan, Repository } from 'typeorm';
 import { ForbiddenException } from '@nestjs/common';
+import { ReputationService } from '../../reputation/reputation.service';
 
 describe('ArchivingService', () => {
   let service: ArchivingService;
@@ -70,6 +71,10 @@ describe('ArchivingService', () => {
     transaction: jest.fn(),
   };
 
+  const mockReputationService = {
+    recordEvent: jest.fn(),
+  };
+
   beforeEach(async () => {
     // recreate transaction mock per test to avoid cross-test call counts
     mockDataSource.transaction = jest.fn((cb) => cb({
@@ -93,6 +98,7 @@ describe('ArchivingService', () => {
         { provide: PushNotificationsService, useValue: mockPushService },
         { provide: EmailService, useValue: mockEmailService },
         { provide: DataSource, useValue: mockDataSource },
+        { provide: ReputationService, useValue: mockReputationService },
       ],
     }).compile();
 

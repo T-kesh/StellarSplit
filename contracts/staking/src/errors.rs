@@ -10,4 +10,5 @@ pub enum Error {
     CooldownActive = 5,
     InvalidAmount = 6,
     NoRewardsToClaim = 7,
+    Unauthorized = 8,
 }

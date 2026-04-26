@@ -8,6 +8,7 @@ import {
   SplitFrozenEvent,
   SplitUnfrozenEvent,
 } from '../dispute.events';
+import { DisputeOutboxPublisher } from '../dispute-outbox.publisher';
 
 /**
  * Event listener for dispute audit trail
@@ -18,6 +19,8 @@ import {
 export class DisputeAuditListener {
   private readonly logger = new Logger(DisputeAuditListener.name);
 
+  constructor(private readonly outboxPublisher: DisputeOutboxPublisher) {}
+
   @OnEvent('dispute.created')
   async handleDisputeCreatedAudit(payload: DisputeCreatedEvent) {
     this.logger.debug(
@@ -27,18 +30,18 @@ export class DisputeAuditListener {
       `Raised by: ${payload.raisedBy}`,
     );
 
-    // TODO: Send to audit log service
-    // await this.auditLogService.logEvent({
-    //   action: 'DISPUTE_CREATED',
-    //   disputeId: payload.dispute.id,
-    //   splitId: payload.dispute.splitId,
-    //   actor: payload.raisedBy,
-    //   details: {
-    //     type: payload.dispute.disputeType,
-    //     description: payload.dispute.description,
-    //   },
-    //   timestamp: new Date(),
-    // });
+    await this.outboxPublisher.enqueueEvent(
+      payload.dispute.id,
+      'dispute.audit.created',
+      {
+        disputeId: payload.dispute.id,
+        splitId: payload.dispute.splitId,
+        disputeType: payload.dispute.disputeType,
+        description: payload.dispute.description,
+        raisedBy: payload.raisedBy,
+        timestamp: payload.timestamp,
+      },
+    );
   }
 
   @OnEvent('dispute.resolved')
@@ -49,17 +52,17 @@ export class DisputeAuditListener {
       `Resolved by: ${payload.resolvedBy}`,
     );
 
-    // TODO: Send to audit log service
-    // await this.auditLogService.logEvent({
-    //   action: 'DISPUTE_RESOLVED',
-    //   disputeId: payload.dispute.id,
-    //   actor: payload.resolvedBy,
-    //   details: {
-    //     outcome: payload.outcome,
-    //     resolution: payload.resolution,
-    //   },
-    //   timestamp: new Date(),
-    // });
+    await this.outboxPublisher.enqueueEvent(
+      payload.dispute.id,
+      'dispute.audit.resolved',
+      {
+        disputeId: payload.dispute.id,
+        outcome: payload.outcome,
+        resolution: payload.resolution,
+        resolvedBy: payload.resolvedBy,
+        timestamp: payload.timestamp,
+      },
+    );
   }
 
   @OnEvent('dispute.rejected')
@@ -70,7 +73,16 @@ export class DisputeAuditListener {
       `Rejected by: ${payload.resolvedBy}`,
     );
 
-    // TODO: Send to audit log service
+    await this.outboxPublisher.enqueueEvent(
+      payload.dispute.id,
+      'dispute.audit.rejected',
+      {
+        disputeId: payload.dispute.id,
+        reason: payload.reason,
+        resolvedBy: payload.resolvedBy,
+        timestamp: payload.timestamp,
+      },
+    );
   }
 
   @OnEvent('dispute.appealed')
@@ -81,7 +93,17 @@ export class DisputeAuditListener {
       `Appealed by: ${payload.appealedBy}`,
     );
 
-    // TODO: Send to audit log service
+    await this.outboxPublisher.enqueueEvent(
+      payload.dispute.id,
+      'dispute.audit.appealed',
+      {
+        disputeId: payload.dispute.id,
+        originalDisputeId: payload.originalDisputeId,
+        appealedBy: payload.appealedBy,
+        appealReason: payload.appealReason,
+        timestamp: payload.timestamp,
+      },
+    );
   }
 
   @OnEvent('split.frozen')
@@ -92,7 +114,16 @@ export class DisputeAuditListener {
       `Reason: ${payload.freezeReason}`,
     );
 
-    // TODO: Send to audit log service
+    await this.outboxPublisher.enqueueEvent(
+      payload.disputeId,
+      'dispute.audit.split_frozen',
+      {
+        splitId: payload.splitId,
+        disputeId: payload.disputeId,
+        freezeReason: payload.freezeReason,
+        timestamp: payload.timestamp,
+      },
+    );
   }
 
   @OnEvent('split.unfrozen')
@@ -103,6 +134,15 @@ export class DisputeAuditListener {
       `Reason: ${payload.unfreezeReason}`,
     );
 
-    // TODO: Send to audit log service
+    await this.outboxPublisher.enqueueEvent(
+      payload.disputeId,
+      'dispute.audit.split_unfrozen',
+      {
+        splitId: payload.splitId,
+        disputeId: payload.disputeId,
+        unfreezeReason: payload.unfreezeReason,
+        timestamp: payload.timestamp,
+      },
+    );
   }
 }

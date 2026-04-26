@@ -1,10 +1,8 @@
-import winston from "winston";
-
-export const logger = winston.createLogger({
-  level: "info",
-  format: winston.format.json(),
-  transports: [new winston.transports.Console()],
-});
+export const logger = {
+  info(payload: Record<string, unknown>) {
+    console.info(JSON.stringify(payload));
+  },
+};
 
 export function logDelivery(url: string, status: string, attempt: number, error?: string) {
   logger.info({
