@@ -20,6 +20,10 @@ export const ROUTES = [
     label: "History",
   },
   {
+    to: "/drafts",
+    label: "Drafts",
+  },
+  {
     to: "/notifications",
     label: "Notifications",
   },

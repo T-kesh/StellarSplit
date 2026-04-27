@@ -22,6 +22,7 @@ import {
   type ReceiptOcrProvider,
 } from '../../services/receiptOcrProvider';
 import * as api from '../../utils/api-client';
+import { draftRegistry } from '../../services/draftRegistry';
 
 const defaultReceiptOcrProvider = createReceiptOcrProvider({
   strategy: receiptOcrStrategyFromEnv,
@@ -102,24 +103,22 @@ const readFileAsDataUrl = (file: File) =>
 const loadDraft = (storageKey: string): ReceiptFlowDraft => {
   const emptyDraft = createEmptyDraft();
 
-  try {
-    const rawDraft = localStorage.getItem(storageKey);
-    if (!rawDraft) {
-      return emptyDraft;
-    }
+  draftRegistry.migrateReceiptDraft(storageKey.replace('receipt:', ''));
 
-    const parsed = JSON.parse(rawDraft) as Partial<ReceiptFlowDraft>;
-    return {
-      ...emptyDraft,
-      ...parsed,
-      items: Array.isArray(parsed.items) ? parsed.items : [],
-      progress:
-        typeof parsed.progress === 'number' ? Math.max(0, parsed.progress) : 0,
-      updatedAt: parsed.updatedAt ?? emptyDraft.updatedAt,
-    };
-  } catch {
+  const data = draftRegistry.load(storageKey);
+  if (!data) {
     return emptyDraft;
   }
+
+  const parsed = data as Partial<ReceiptFlowDraft>;
+  return {
+    ...emptyDraft,
+    ...parsed,
+    items: Array.isArray(parsed.items) ? parsed.items : [],
+    progress:
+      typeof parsed.progress === 'number' ? Math.max(0, parsed.progress) : 0,
+    updatedAt: parsed.updatedAt ?? emptyDraft.updatedAt,
+  };
 };
 
 const methodLabel: Record<CaptureMethod, string> = {
@@ -135,15 +134,16 @@ export const ReceiptCaptureFlow = ({
   ocrProvider = defaultReceiptOcrProvider,
 }: ReceiptCaptureFlowProps) => {
   const storageKey = useMemo(
-    () => `stellarsplit-receipt-draft:${splitId}`,
+    () => `receipt:${splitId}`,
     [splitId]
   );
   const [draft, setDraft] = useState<ReceiptFlowDraft>(() => loadDraft(storageKey));
   const [isApplying, setIsApplying] = useState(false);
 
   useEffect(() => {
-    localStorage.setItem(storageKey, JSON.stringify(draft));
-  }, [draft, storageKey]);
+    const title = draft.imageName || draft.manualEntry?.merchant || `Receipt Draft ${splitId}`;
+    draftRegistry.save(storageKey, draft, 'receipt', title);
+  }, [draft, storageKey, splitId]);
 
   const parsedTotal = useMemo(
     () =>
@@ -160,7 +160,7 @@ export const ReceiptCaptureFlow = ({
 
   const clearDraft = () => {
     const emptyDraft = createEmptyDraft();
-    localStorage.removeItem(storageKey);
+    draftRegistry.delete(storageKey);
     setDraft(emptyDraft);
   };
 

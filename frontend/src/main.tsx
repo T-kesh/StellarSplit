@@ -78,6 +78,13 @@ const router = createBrowserRouter([
           return { Component: NotificationCenterPage };
         },
       },
+      {
+        path: "/drafts",
+        lazy: async () => {
+          const { default: DraftsPage } = await import("./pages/DraftsPage");
+          return { Component: DraftsPage };
+        },
+      },
     ],
   },
 ]);

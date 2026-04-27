@@ -16,7 +16,7 @@ import {
 } from './validators';
 import { useWallet } from '../../hooks/use-wallet';
 import type { WizardState } from '../../types/wizard';
-import { INITIAL_WIZARD_STATE, WIZARD_DRAFT_KEY } from '../../types/wizard';
+import { INITIAL_WIZARD_STATE } from '../../types/wizard';
 import { calculateWizardSplit } from '../../utils/split-calculations';
 import {
     createActivityRecord,
@@ -25,15 +25,12 @@ import {
     getApiFieldErrors,
 } from '../../utils/api-client';
 import { storeSplitParticipantDirectory } from '../../utils/session';
+import { draftRegistry } from '../../services/draftRegistry';
 
 const loadDraft = (): WizardState => {
-    try {
-        const raw = localStorage.getItem(WIZARD_DRAFT_KEY);
-        if (raw) return JSON.parse(raw) as WizardState;
-    } catch {
-        // ignore corrupt drafts
-    }
-    return INITIAL_WIZARD_STATE;
+    draftRegistry.migrateWizardDraft();
+    const data = draftRegistry.load('wizard');
+    return data || INITIAL_WIZARD_STATE;
 };
 
 export const SplitCreationWizard = () => {
@@ -81,11 +78,7 @@ export const SplitCreationWizard = () => {
 
     // Auto-save draft on every state change
     useEffect(() => {
-        try {
-            localStorage.setItem(WIZARD_DRAFT_KEY, JSON.stringify(wizardState));
-        } catch {
-            // storage full — ignore
-        }
+        draftRegistry.save('wizard', wizardState, 'wizard', wizardState.title || 'Split Wizard Draft');
     }, [wizardState]);
 
     const patch = useCallback((p: Partial<WizardState>) => {
@@ -142,13 +135,9 @@ export const SplitCreationWizard = () => {
     };
 
     const handleSaveDraft = () => {
-        try {
-            localStorage.setItem(WIZARD_DRAFT_KEY, JSON.stringify(wizardState));
-            setDraftSaved(true);
-            setTimeout(() => setDraftSaved(false), 2000);
-        } catch {
-            // ignore
-        }
+        draftRegistry.save('wizard', wizardState, 'wizard', wizardState.title || 'Split Wizard Draft');
+        setDraftSaved(true);
+        setTimeout(() => setDraftSaved(false), 2000);
     };
 
     const handleSubmit = async () => {
@@ -232,7 +221,7 @@ export const SplitCreationWizard = () => {
                 },
             }).catch(() => undefined);
 
-            localStorage.removeItem(WIZARD_DRAFT_KEY);
+            draftRegistry.delete('wizard');
             navigate(`/split/${createdSplit.id}`);
         } catch (error) {
             const fieldErrors = getApiFieldErrors(error);
