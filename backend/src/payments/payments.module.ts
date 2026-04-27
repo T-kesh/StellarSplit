@@ -1,6 +1,7 @@
 import { Module } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { BullModule } from "@nestjs/bull";
+import { ConfigModule } from "@nestjs/config";
 import { PaymentsController } from "./payments.controller";
 import { PaymentsService } from "./payments.service";
 import { PaymentProcessorService } from "./payment-processor.service";
@@ -10,6 +11,8 @@ import { PaymentSettlementProcessor } from "./payment-settlement.processor";
 import { StellarModule } from "../stellar/stellar.module";
 import { forwardRef } from "@nestjs/common";
 import { PaymentGateway } from "../websocket/payment.gateway";
+import { WsJwtAuthService } from "../websocket/payment.gateway";
+import { WsPaymentAuthGuard } from "../websocket/payment.gateway";
 import { Payment } from "../entities/payment.entity";
 import { Participant } from "../entities/participant.entity";
 import { Split } from "../entities/split.entity";
@@ -22,11 +25,12 @@ import { IdempotencyService } from "../common/idempotency/idempotency.service";
 import { IdempotencyInterceptor } from "../common/idempotency/idempotency.interceptor";
 import { ReputationModule } from "../reputation/reputation.module";
 import { QueueJobPolicy, JobPolicyTier } from "../common/queue-job-policy";
+import { AuthorizationService } from "../auth/services/authorization.service";
 
 @Module({
   imports: [
+    ConfigModule,
     TypeOrmModule.forFeature([Payment, Participant, Split, IdempotencyRecord]),
-    // Register Bull queues for payment processing
     BullModule.registerQueue(
       QueueJobPolicy.forQueue('payment-reconciliation', JobPolicyTier.CRITICAL),
       QueueJobPolicy.forQueue('payment-settlement', JobPolicyTier.CRITICAL),
@@ -46,6 +50,9 @@ import { QueueJobPolicy, JobPolicyTier } from "../common/queue-job-policy";
     PaymentReconciliationProcessor,
     PaymentSettlementProcessor,
     PaymentGateway,
+    WsJwtAuthService,
+    WsPaymentAuthGuard,
+    AuthorizationService,
     IdempotencyService,
     AnalyticsModule,
     IdempotencyInterceptor,
