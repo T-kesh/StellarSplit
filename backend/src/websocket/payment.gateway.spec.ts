@@ -33,7 +33,7 @@ describe('PaymentGateway', () => {
         headers: {},
         query: {},
       },
-    };
+    } as unknown as Socket;
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -63,7 +63,7 @@ describe('PaymentGateway', () => {
   describe('handleConnection', () => {
     it('should allow authenticated client to connect', () => {
       const token = createTestToken('user-123', 'test-secret');
-      mockClient.handshake = {
+      (mockClient as any).handshake = {
         auth: { token },
         headers: {},
         query: {},
@@ -76,7 +76,7 @@ describe('PaymentGateway', () => {
     });
 
     it('should disconnect unauthorized client', () => {
-      mockClient.handshake = {
+      (mockClient as any).handshake = {
         auth: { token: 'invalid-token' },
         headers: {},
         query: {},
@@ -92,7 +92,7 @@ describe('PaymentGateway', () => {
     it('should allow authorized user to join room', async () => {
       const token = createTestToken('user-123', 'test-secret');
       mockClient.data.user = { sub: 'user-123' };
-      mockClient.handshake = {
+      (mockClient as any).handshake = {
         auth: { token },
         headers: {},
         query: {},
@@ -114,7 +114,7 @@ describe('PaymentGateway', () => {
 
     it('should reject unauthorized user from joining room', async () => {
       mockClient.data.user = { sub: 'user-123' };
-      mockClient.handshake = {
+      (mockClient as any).handshake = {
         auth: { token: createTestToken('user-123', 'test-secret') },
         headers: {},
         query: {},
@@ -140,7 +140,7 @@ describe('PaymentGateway', () => {
     it('should allow user to join their own user room', async () => {
       const token = createTestToken('user-123', 'test-secret');
       mockClient.data.user = { sub: 'user-123' };
-      mockClient.handshake = {
+      (mockClient as any).handshake = {
         auth: { token },
         headers: {},
         query: {},
@@ -160,7 +160,7 @@ describe('PaymentGateway', () => {
 
     it('should reject user from joining another user room', async () => {
       mockClient.data.user = { sub: 'user-123' };
-      mockClient.handshake = {
+      (mockClient as any).handshake = {
         auth: { token: createTestToken('user-123', 'test-secret') },
         headers: {},
         query: {},

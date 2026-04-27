@@ -14,53 +14,13 @@ export interface JoinedUserRoomEvent {
   userId: string;
 }
 
-export interface PaymentStatusUpdatePayload {
-  paymentId: string;
-  status: 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled';
-  splitId?: string;
-  participantId?: string;
-  amount?: number;
-  currency?: string;
-  txHash?: string;
-  errorMessage?: string;
-  timestamp: string;
-}
+export type PaymentStatusUpdatePayload = Record<string, unknown>;
 
-export interface SplitCompletionPayload {
-  splitId: string;
-  totalAmount: number;
-  currency: string;
-  completedAt: string;
-  participantCount: number;
-  payments: Array<{
-    paymentId: string;
-    participantId: string;
-    amount: number;
-    status: string;
-  }>;
-}
+export type SplitCompletionPayload = Record<string, unknown>;
 
-export interface PaymentNotificationPayload {
-  type: 'payment_received' | 'payment_sent' | 'payment_failed' | 'refund_processed';
-  paymentId: string;
-  splitId?: string;
-  participantId?: string;
-  amount: number;
-  currency: string;
-  txHash?: string;
-  timestamp: string;
-  metadata?: Record<string, unknown>;
-}
+export type PaymentNotificationPayload = Record<string, unknown>;
 
-export interface ActivityNewPayload {
-  activityId: string;
-  userId: string;
-  type: 'payment' | 'split' | 'participant' | 'system';
-  action: string;
-  description: string;
-  metadata?: Record<string, unknown>;
-  timestamp: string;
-}
+export type ActivityNewPayload = unknown;
 
 export interface ActivityReadPayload {
   activityIds: string[];

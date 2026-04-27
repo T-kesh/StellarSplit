@@ -141,7 +141,7 @@ export class WsPaymentAuthGuard implements CanActivate {
   }
 }
 
-function buildCorsConfig(configService: ConfigService): {
+export function buildCorsConfig(configService: ConfigService): {
   origin: string | string[];
   methods: string[];
   credentials: boolean;
@@ -186,6 +186,7 @@ export class PaymentGateway
     private readonly authorizationService: AuthorizationService,
   ) {}
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
   afterInit(_server: Server) {
     this.logger.log('PaymentGateway initialized');
   }
@@ -195,7 +196,7 @@ export class PaymentGateway
       const payload = this.wsJwtAuthService.authenticateClient(client);
       client.data.user = payload;
       this.logger.log(`Client connected: ${client.id}`);
-    } catch (error) {
+    } catch {
       this.logger.warn(`Unauthorized socket connection rejected: ${client.id}`);
       client.disconnect(true);
     }
@@ -280,3 +281,5 @@ export class PaymentGateway
     return { event: 'joined-user-room', data: { userId: payload.userId } };
   }
 }
+
+export { PaymentGateway as WebSocketGateway };

@@ -50,7 +50,7 @@ export function escapeStringValue(value: string): string {
   return value
     .replace(/\\/g, '\\\\')
     .replace(/'/g, "\\'")
-    .replace(/[\x00-\x1f\x7f]/g, ''); // strip control characters
+    .replace(/[\x00-\x1f\x7f]/g, ''); // eslint-disable-line no-control-regex
 }
 
 /**
