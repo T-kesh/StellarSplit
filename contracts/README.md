@@ -27,19 +27,23 @@ bash scripts/ci-contracts.sh test   # tests only
 bash scripts/ci-contracts.sh build  # WASM build only
 ```
 
+📖 **For detailed CI documentation, see [Contract CI Guide](../docs/contract-ci.md)**
+
 ## Contract Status
 
-| Contract | Status | Tests | Notes |
-|----------|--------|-------|-------|
-| achievement-badges | Production | Yes | NFT achievement badges |
-| flash-loan | Production | Yes | Flash loan protocol |
-| path-payment | Production | Yes | Automatic currency conversion via Stellar path payments |
-| split-template | Production | Yes | Reusable split templates with versioning |
-| staking | Production | Yes | Staking, governance delegation, and reward distribution |
-| dispute-resolution | Production | Yes | On-chain dispute voting and escrow settlement |
-| split-escrow | Experimental | - | Many compilation errors; draft/broken source |
-| multi-sig-splits | Experimental | - | E0507 move error; needs ownership fix |
-| reminder | Archived | - | Orphaned contract area; incomplete structure, relocated to archived/ |
+| Contract | Status | CI Support | Tests | Notes |
+|----------|--------|------------|-------|-------|
+| achievement-badges | Production | ✅ Supported | Yes | NFT achievement badges |
+| flash-loan | Production | ✅ Supported | Yes | Flash loan protocol |
+| path-payment | Production | ✅ Supported | Yes | Automatic currency conversion via Stellar path payments |
+| split-template | Production | ✅ Supported | Yes | Reusable split templates with versioning |
+| staking | Production | ✅ Supported | Yes | Staking, governance delegation, and reward distribution |
+| dispute-resolution | Production | ✅ Supported | Yes | On-chain dispute voting and escrow settlement |
+| split-escrow | Experimental | ❌ Excluded | - | Many compilation errors; draft/broken source |
+| multi-sig-splits | Experimental | ❌ Excluded | - | E0507 move error; needs ownership fix |
+| reminder | Archived | ❌ Excluded | - | Orphaned contract area; incomplete structure, relocated to archived/ |
+
+**CI Support**: Contracts marked as ✅ Supported must pass all CI checks and are included in `scripts/ci-contracts.sh`. Experimental contracts are excluded from CI but remain in the workspace for development.
 
 ## Project Structure
 

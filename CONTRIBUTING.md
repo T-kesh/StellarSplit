@@ -124,6 +124,123 @@ If you're applying through Drips Wave:
 
 ---
 
+## Smart Contract Contributions
+
+StellarSplit includes Soroban smart contracts that handle on-chain escrow and payment logic. Contributing to contracts follows specific guidelines to ensure security and reliability.
+
+### Contract Development Setup
+
+```bash
+# Navigate to contracts directory
+cd contracts
+
+# Install Rust and WebAssembly target
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+rustup target add wasm32-unknown-unknown
+
+# Install Soroban CLI (optional but recommended)
+cargo install soroban-cli
+
+# Run contract CI locally
+bash scripts/ci-contracts.sh all
+```
+
+### Contract Contribution Process
+
+#### 1. Understand Contract Status
+
+Contracts have three status levels:
+
+- **Production** (✅ CI Supported): Must pass all CI checks
+- **Experimental** (❌ CI Excluded): Development phase, may have compilation issues
+- **Archived**: No longer maintained
+
+Check the current status in `contracts/README.md` or `docs/contract-ci.md`.
+
+#### 2. Development Guidelines
+
+**For New Contracts:**
+
+1. Create contract directory under `contracts/`
+2. Add to `contracts/Cargo.toml` members array
+3. Implement with comprehensive tests
+4. Follow Soroban best practices
+5. Start as experimental (excluded from CI)
+
+**For Existing Contracts:**
+
+- **Production contracts**: Must maintain CI compatibility
+- **Experimental contracts**: Fix issues to graduate to production
+
+#### 3. CI Requirements
+
+**Production contracts must pass:**
+
+```bash
+# All three checks must pass
+bash scripts/ci-contracts.sh fmt    # Code formatting
+bash scripts/ci-contracts.sh test   # Unit tests  
+bash scripts/ci-contracts.sh build  # WASM compilation
+```
+
+**Quality Standards:**
+
+- Comprehensive unit tests with edge cases
+- Proper error handling and validation
+- Clear documentation and comments
+- Follow Rust and Soroban conventions
+- Use workspace dependencies when possible
+
+#### 4. Graduation Process
+
+To move a contract from experimental to production:
+
+1. **Fix all compilation errors** - Clean build for `wasm32-unknown-unknown`
+2. **Add comprehensive tests** - Good coverage of functionality
+3. **Update CI script** - Add to `SUPPORTED_CONTRACTS` array in `scripts/ci-contracts.sh`
+4. **Update documentation** - Status tables and README files
+5. **Submit PR** - Include all changes and documentation updates
+
+#### 5. Pull Requirements
+
+Your contract PR should include:
+
+- Contract source code with tests
+- Updated `contracts/Cargo.toml` (if new contract)
+- Updated `scripts/ci-contracts.sh` (if graduating to supported)
+- Updated documentation:
+  - `contracts/README.md`
+  - `docs/contract-ci.md`
+  - Contract-specific README if applicable
+
+### Contract Testing
+
+```bash
+# Test specific contract
+cd contracts/your-contract
+cargo test
+
+# Test with output
+cargo test -- --nocapture
+
+# Run specific test
+cargo test test_function_name
+```
+
+### Resources
+
+- **Contract CI Guide**: See `docs/contract-ci.md` for detailed documentation
+- **Soroban Documentation**: https://soroban.stellar.org/docs/
+- **StellarSplit Contracts**: `contracts/README.md`
+
+### Common Issues
+
+- **Compilation errors**: Check Soroban SDK version compatibility
+- **WASM build failures**: Ensure `wasm32-unknown-unknown` target is installed
+- **Test failures**: Verify test environment setup and dependencies
+
+---
+
 ## Development Guidelines
 
 ### Code Style
