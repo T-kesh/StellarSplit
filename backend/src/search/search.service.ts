@@ -1,17 +1,17 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, SelectQueryBuilder } from 'typeorm';
 import { Split } from '../entities/split.entity';
 import { Item } from '../entities/item.entity';
 import { Participant } from '../entities/participant.entity';
-import { 
-  SearchSplitsDto, 
-  SearchFiltersDto 
+import {
+  SearchSplitsDto,
+  SearchFiltersDto
 } from './dto/search-splits.dto';
-import { 
-  SearchResultDto, 
-  SearchResultItemDto, 
-  SearchHighlightsDto 
+import {
+  SearchResultDto,
+  SearchResultItemDto,
+  SearchHighlightsDto
 } from './dto/search-result.dto';
 
 /**
@@ -34,13 +34,19 @@ interface DecodedCursor {
  * or indexes are unavailable.
  */
 @Injectable()
-export class SearchService {
+export class SearchService implements OnModuleInit {
+  /**
+   * Called by NestJS when the module has been initialized
+   */
+  async onModuleInit(): Promise<void> {
+    await this.initializeFeatures();
+  }
   private readonly logger = new Logger(SearchService.name);
-  
+
   // Default pagination settings
   private readonly DEFAULT_LIMIT = 20;
   private readonly MAX_LIMIT = 100;
-  
+
   // Minimum similarity threshold for fuzzy matching (0-1 scale)
   private readonly FUZZY_THRESHOLD = 0.3;
 
@@ -58,7 +64,7 @@ export class SearchService {
     private readonly itemRepository: Repository<Item>,
     @InjectRepository(Participant)
     private readonly participantRepository: Repository<Participant>,
-  ) {}
+  ) { }
 
   /**
    * Initialize feature detection
@@ -68,13 +74,13 @@ export class SearchService {
     try {
       // Check for FTS capability
       await this.checkFtsCapability();
-      
+
       // Check for trigram capability
       await this.checkTrgmCapability();
-      
+
       // Check for materialized view
       await this.checkMaterializedView();
-      
+
       this.logger.log('Search features initialized', this.features);
     } catch (error) {
       this.logger.warn('Failed to initialize search features, using fallback mode', error);
@@ -135,7 +141,7 @@ export class SearchService {
   async searchSplits(dto: SearchSplitsDto): Promise<SearchResultDto> {
     const limit = Math.min(dto.limit || this.DEFAULT_LIMIT, this.MAX_LIMIT);
     const searchQuery = this.sanitizeSearchQuery(dto.query);
-    
+
     // I'm building the query in steps for clarity and maintainability
     let queryBuilder = this.splitRepository
       .createQueryBuilder('split')
@@ -220,10 +226,10 @@ export class SearchService {
           OR similarity(i.name, :rawQuery) > :threshold
         )
       )
-    )`, { 
-      tsQuery, 
+    )`, {
+      tsQuery,
       rawQuery: searchQuery,
-      threshold: this.FUZZY_THRESHOLD 
+      threshold: this.FUZZY_THRESHOLD
     });
 
     // Add relevance score for sorting
@@ -252,8 +258,8 @@ export class SearchService {
         WHERE i."splitId" = split.id 
         AND LOWER(i.name) LIKE :likePattern
       )
-    )`, { 
-      likePattern 
+    )`, {
+      likePattern
     });
 
     return queryBuilder;
@@ -268,32 +274,32 @@ export class SearchService {
   ): SelectQueryBuilder<Split> {
     // Date range filters
     if (filters.dateFrom) {
-      queryBuilder.andWhere('split.createdAt >= :dateFrom', { 
-        dateFrom: new Date(filters.dateFrom) 
+      queryBuilder.andWhere('split.createdAt >= :dateFrom', {
+        dateFrom: new Date(filters.dateFrom)
       });
     }
     if (filters.dateTo) {
-      queryBuilder.andWhere('split.createdAt <= :dateTo', { 
-        dateTo: new Date(filters.dateTo) 
+      queryBuilder.andWhere('split.createdAt <= :dateTo', {
+        dateTo: new Date(filters.dateTo)
       });
     }
 
     // Amount range filters
     if (filters.minAmount !== undefined) {
-      queryBuilder.andWhere('split.totalAmount >= :minAmount', { 
-        minAmount: filters.minAmount 
+      queryBuilder.andWhere('split.totalAmount >= :minAmount', {
+        minAmount: filters.minAmount
       });
     }
     if (filters.maxAmount !== undefined) {
-      queryBuilder.andWhere('split.totalAmount <= :maxAmount', { 
-        maxAmount: filters.maxAmount 
+      queryBuilder.andWhere('split.totalAmount <= :maxAmount', {
+        maxAmount: filters.maxAmount
       });
     }
 
     // Status filter - I'm using IN for multiple statuses
     if (filters.status && filters.status.length > 0) {
-      queryBuilder.andWhere('split.status IN (:...statuses)', { 
-        statuses: filters.status 
+      queryBuilder.andWhere('split.status IN (:...statuses)', {
+        statuses: filters.status
       });
     }
 
@@ -303,8 +309,8 @@ export class SearchService {
         SELECT 1 FROM participants p 
         WHERE p."splitId" = split.id 
         AND p."userId" IN (:...participantIds)
-      )`, { 
-        participantIds: filters.participants 
+      )`, {
+        participantIds: filters.participants
       });
     }
 
@@ -369,7 +375,7 @@ export class SearchService {
    */
   private async getFilteredCount(dto: SearchSplitsDto): Promise<number> {
     const searchQuery = this.sanitizeSearchQuery(dto.query);
-    
+
     let countBuilder = this.splitRepository.createQueryBuilder('split');
 
     if (searchQuery.trim()) {
@@ -385,10 +391,10 @@ export class SearchService {
             OR similarity(i.name, :rawQuery) > :threshold
           )
         )
-      )`, { 
-        tsQuery, 
+      )`, {
+        tsQuery,
         rawQuery: searchQuery,
-        threshold: this.FUZZY_THRESHOLD 
+        threshold: this.FUZZY_THRESHOLD
       });
     }
 
