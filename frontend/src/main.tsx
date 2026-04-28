@@ -72,6 +72,13 @@ const router = createBrowserRouter([
         },
       },
       {
+        path: "/calculator",
+        lazy: async () => {
+          const { default: SplitCalculatorPage } = await import("./pages/SplitCalculatorPage");
+          return { Component: SplitCalculatorPage };
+        },
+      },
+      {
         path: "/notifications",
         lazy: async () => {
           const { default: NotificationCenterPage } = await import("./pages/NotificationCenterPage");

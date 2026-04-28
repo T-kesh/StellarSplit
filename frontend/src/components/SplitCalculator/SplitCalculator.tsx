@@ -15,6 +15,7 @@ import {
   saveCalculatorTemplate,
 } from "../../services/calculatorTemplateStore";
 import { exportSplitCalculation } from "../../utils/exportSplitCalculation";
+import { buildCalculatorShareUrl } from "../../utils/calculatorShare";
 
 export type CalculatorType = "equal" | "itemized" | "percentage" | "custom";
 
@@ -66,10 +67,14 @@ const CURRENCIES = [
   { code: "XLM", symbol: "XLM", name: "Stellar Lumens" },
 ];
 
-export function SplitCalculator() {
+interface SplitCalculatorProps {
+  initialState?: CalculatorState;
+}
+
+export function SplitCalculator({ initialState }: SplitCalculatorProps) {
   const { t } = useTranslation();
-  const [activeTab, setActiveTab] = useState<CalculatorType>("equal");
-  const [state, setState] = useState<CalculatorState>(INITIAL_STATE);
+  const [activeTab, setActiveTab] = useState<CalculatorType>(initialState?.type ?? "equal");
+  const [state, setState] = useState<CalculatorState>(initialState ?? INITIAL_STATE);
   const [savedTemplates, setSavedTemplates] = useState<CalculatorTemplate[]>([]);
   const [templateName, setTemplateName] = useState('');
   const [templateError, setTemplateError] = useState<string | null>(null);
@@ -82,6 +87,13 @@ export function SplitCalculator() {
   const updateState = useCallback((updates: Partial<CalculatorState>) => {
     setState((prev) => ({ ...prev, ...updates }));
   }, []);
+
+  useEffect(() => {
+    if (initialState) {
+      setState(initialState);
+      setActiveTab(initialState.type);
+    }
+  }, [initialState]);
 
   const calculateSubtotal = () => {
     return state.totalAmount + state.taxAmount + state.tipAmount;
@@ -144,16 +156,7 @@ export function SplitCalculator() {
   };
 
   const handleShare = async () => {
-    const summary = {
-      type: state.type,
-      participants: state.participants,
-      items: state.items,
-      subtotal: calculateSubtotal(),
-      currency: state.currency,
-    };
-
-    const encoded = btoa(JSON.stringify(summary));
-    const shareUrl = `${window.location.origin}/calculator?data=${encoded}`;
+    const shareUrl = `${window.location.origin}${buildCalculatorShareUrl(state)}`;
 
     if (navigator.share) {
       try {
