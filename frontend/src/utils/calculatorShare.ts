@@ -36,7 +36,6 @@ function base64Decode(value: string): string {
 
 function isCalculatorState(value: unknown): value is CalculatorState {
   if (typeof value !== 'object' || value === null) return false;
-
   const candidate = value as CalculatorState;
   return (
     candidate != null &&
@@ -56,7 +55,6 @@ export function encodeCalculatorShare(state: CalculatorState): string {
     version: SHARE_VERSION,
     state,
   };
-
   return base64Encode(JSON.stringify(payload));
 }
 
