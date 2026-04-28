@@ -8,6 +8,7 @@ interface CalculationSummaryProps {
   subtotal: number;
   currency: string;
   rounding: 'none' | 'up' | 'down' | 'nearest';
+  onExport?: () => void;
 }
 
 const CURRENCY_SYMBOLS: Record<string, string> = {
@@ -23,6 +24,7 @@ export function CalculationSummary({
   subtotal,
   currency,
   rounding,
+  onExport,
 }: CalculationSummaryProps) {
   const { t } = useTranslation();
   const currencySymbol = CURRENCY_SYMBOLS[currency] || '$';
@@ -161,6 +163,14 @@ export function CalculationSummary({
         >
           {t('calculator.copyToClipboard')}
         </button>
+        {onExport && (
+          <button
+            onClick={onExport}
+            className="px-4 py-2 text-sm font-medium text-white bg-[var(--color-primary)] rounded-lg hover:bg-[var(--color-primary-dark)] transition-colors"
+          >
+            {t('calculator.export')}
+          </button>
+        )}
       </div>
     </div>
   );
