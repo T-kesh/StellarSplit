@@ -236,6 +236,15 @@
             "itemPriceRequired": "All items must have a price greater than zero."
         }
     },
+    "activityFeed": {
+        "someone": "Someone",
+        "splitCreated": "created {{title}}",
+        "paymentMade": "paid {{amount}} toward {{title}}",
+        "paymentReceived": "received a payment for {{title}}",
+        "splitCompleted": "marked {{title}} as completed",
+        "splitEdited": "updated {{title}}",
+        "generic": "added an update to {{title}}"
+    },
     "languages": {
         "en": "English",
         "es": "Spanish",

@@ -140,6 +140,15 @@
             "viewReports": "查看报表"
         }
     },
+    "activityFeed": {
+        "someone": "某人",
+        "splitCreated": "创建了 {{title}}",
+        "paymentMade": "向 {{title}} 支付了 {{amount}}",
+        "paymentReceived": "收到了关于 {{title}} 的付款",
+        "splitCompleted": "将 {{title}} 标记为已完成",
+        "splitEdited": "更新了 {{title}}",
+        "generic": "向 {{title}} 添加了更新"
+    },
     "languages": {
         "en": "英语",
         "es": "西班牙语",

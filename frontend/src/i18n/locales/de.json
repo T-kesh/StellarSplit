@@ -140,6 +140,15 @@
             "viewReports": "Berichte anzeigen"
         }
     },
+    "activityFeed": {
+        "someone": "Jemand",
+        "splitCreated": "hat {{title}} erstellt",
+        "paymentMade": "hat {{amount}} für {{title}} gezahlt",
+        "paymentReceived": "hat eine Zahlung für {{title}} erhalten",
+        "splitCompleted": "hat {{title}} als abgeschlossen markiert",
+        "splitEdited": "hat {{title}} aktualisiert",
+        "generic": "hat ein Update zu {{title}} hinzugefügt"
+    },
     "languages": {
         "en": "Englisch",
         "es": "Spanisch",

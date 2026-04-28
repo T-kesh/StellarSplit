@@ -72,6 +72,7 @@ export const SplitDetailPage = () => {
         try {
             const viewModel = await splitDetailRepository.getSplitDetail(splitId, {
                 currentUserId: activeUserId,
+                t,
             });
 
             setSplit(viewModel.split);

@@ -140,6 +140,15 @@
             "viewReports": "レポートを見る"
         }
     },
+    "activityFeed": {
+        "someone": "誰か",
+        "splitCreated": "が{{title}}を作成",
+        "paymentMade": "が{{title}}に{{amount}}支払い",
+        "paymentReceived": "が{{title}}の支払いを受け取り",
+        "splitCompleted": "が{{title}}を完了としてマーク",
+        "splitEdited": "が{{title}}を更新",
+        "generic": "が{{title}}に更新を追加"
+    },
     "languages": {
         "en": "英語",
         "es": "スペイン語",

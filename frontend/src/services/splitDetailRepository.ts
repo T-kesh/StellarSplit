@@ -1,5 +1,6 @@
 import type { Participant, Split } from '../types';
 import type { ActivityFeedItem } from '../components/Collaboration';
+import type { TFunction } from 'i18next';
 import {
     fetchProfile,
     fetchReceiptSignedUrl,
@@ -12,6 +13,7 @@ import {
     type ApiSplitParticipant,
 } from '../utils/api-client';
 import { getStoredSplitParticipantDirectory } from '../utils/session';
+import { formatActivityMessage } from '../utils/activityMessageFormatter';
 
 export interface SplitDetailViewModel {
     split: Split;
@@ -20,6 +22,7 @@ export interface SplitDetailViewModel {
 
 export interface SplitDetailRepositoryOptions {
     currentUserId: string | null;
+    t?: TFunction;
 }
 
 class SplitDetailRepository {
@@ -67,74 +70,85 @@ class SplitDetailRepository {
     private buildActivityMessage(
         activity: ApiActivityRecord,
         splitTitle: string,
+        t?: TFunction,
     ): ActivityFeedItem {
-        const metadataTitle =
-            typeof activity.metadata.title === 'string' ? activity.metadata.title : splitTitle;
-        const amount =
-            typeof activity.metadata.amount === 'number' || typeof activity.metadata.amount === 'string'
-                ? normalizeDecimal(activity.metadata.amount as number | string)
-                : 0;
-        const actor =
-            typeof activity.metadata.actorName === 'string'
-                ? activity.metadata.actorName
-                : 'Someone';
+        if (!t) {
+            // Fallback to old behavior if t is not provided
+            const metadataTitle =
+                typeof activity.metadata.title === 'string' ? activity.metadata.title : splitTitle;
+            const amount =
+                typeof activity.metadata.amount === 'number' || typeof activity.metadata.amount === 'string'
+                    ? normalizeDecimal(activity.metadata.amount as number | string)
+                    : 0;
+            const actor =
+                typeof activity.metadata.actorName === 'string'
+                    ? activity.metadata.actorName
+                    : 'Someone';
 
-        switch (activity.activityType) {
-            case 'split_created':
-                return {
-                    id: activity.id,
-                    type: 'custom',
-                    userName: actor,
-                    message: `created ${metadataTitle}`,
-                    timestamp: activity.createdAt,
-                    splitId: activity.splitId,
-                };
-            case 'payment_made':
-                return {
-                    id: activity.id,
-                    type: 'payment-status',
-                    userName: actor,
-                    message: `paid ${amount > 0 ? amount.toFixed(2) : ''} toward ${metadataTitle}`.trim(),
-                    timestamp: activity.createdAt,
-                    splitId: activity.splitId,
-                };
-            case 'payment_received':
-                return {
-                    id: activity.id,
-                    type: 'payment-status',
-                    userName: actor,
-                    message: `received a payment for ${metadataTitle}`,
-                    timestamp: activity.createdAt,
-                    splitId: activity.splitId,
-                };
-            case 'split_completed':
-                return {
-                    id: activity.id,
-                    type: 'payment-status',
-                    userName: actor,
-                    message: `marked ${metadataTitle} as completed`,
-                    timestamp: activity.createdAt,
-                    splitId: activity.splitId,
-                };
-            case 'split_edited':
-                return {
-                    id: activity.id,
-                    type: 'item-updated',
-                    userName: actor,
-                    message: `updated ${metadataTitle}`,
-                    timestamp: activity.createdAt,
-                    splitId: activity.splitId,
-                };
-            default:
-                return {
-                    id: activity.id,
-                    type: 'custom',
-                    userName: actor,
-                    message: `added an update to ${metadataTitle}`,
-                    timestamp: activity.createdAt,
-                    splitId: activity.splitId,
-                };
+            switch (activity.activityType) {
+                case 'split_created':
+                    return {
+                        id: activity.id,
+                        type: 'custom',
+                        userName: actor,
+                        message: `created ${metadataTitle}`,
+                        timestamp: activity.createdAt,
+                        splitId: activity.splitId,
+                    };
+                case 'payment_made':
+                    return {
+                        id: activity.id,
+                        type: 'payment-status',
+                        userName: actor,
+                        message: `paid ${amount > 0 ? amount.toFixed(2) : ''} toward ${metadataTitle}`.trim(),
+                        timestamp: activity.createdAt,
+                        splitId: activity.splitId,
+                    };
+                case 'payment_received':
+                    return {
+                        id: activity.id,
+                        type: 'payment-status',
+                        userName: actor,
+                        message: `received a payment for ${metadataTitle}`,
+                        timestamp: activity.createdAt,
+                        splitId: activity.splitId,
+                    };
+                case 'split_completed':
+                    return {
+                        id: activity.id,
+                        type: 'payment-status',
+                        userName: actor,
+                        message: `marked ${metadataTitle} as completed`,
+                        timestamp: activity.createdAt,
+                        splitId: activity.splitId,
+                    };
+                case 'split_edited':
+                    return {
+                        id: activity.id,
+                        type: 'item-updated',
+                        userName: actor,
+                        message: `updated ${metadataTitle}`,
+                        timestamp: activity.createdAt,
+                        splitId: activity.splitId,
+                    };
+                default:
+                    return {
+                        id: activity.id,
+                        type: 'custom',
+                        userName: actor,
+                        message: `added an update to ${metadataTitle}`,
+                        timestamp: activity.createdAt,
+                        splitId: activity.splitId,
+                    };
+            }
         }
+
+        // Use the formatter when t is provided
+        return formatActivityMessage({
+            t,
+            activity,
+            splitTitle,
+        });
     }
 
     private roundCurrency(value: number): number {
@@ -257,7 +271,7 @@ class SplitDetailRepository {
         };
 
         const activityItems = (activities ?? []).map((activity) =>
-            this.buildActivityMessage(activity, split.title),
+            this.buildActivityMessage(activity, split.title, options.t),
         );
 
         return {
